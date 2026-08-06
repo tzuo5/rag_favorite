@@ -106,9 +106,9 @@ def test_setup_status_detects_missing_embedding_model(
 ) -> None:
     _xdg_environment(monkeypatch, tmp_path)
     config_file = tmp_path / "profile" / "config.toml"
-    assert main(
-        ["--config", str(config_file), "setup", "apply", "--skip-database"]
-    ) == 0
+    assert (
+        main(["--config", str(config_file), "setup", "apply", "--skip-database"]) == 0
+    )
     migration = load_migration("0001_document_rag.sql")
 
     class CurrentMigrations:

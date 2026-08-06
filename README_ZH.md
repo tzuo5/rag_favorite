@@ -41,6 +41,7 @@ OpenClaw，也不要求购买托管向量数据库或 embedding API。
 | **本地 Embedding** | 使用 Ollama 生成向量，写入 PostgreSQL + pgvector。 |
 | **标准 MCP** | 通过 stdio 提供只读的 `rag_search` 和 `rag_status`。 |
 | **OpenClaw 适配** | 支持检测、预览、安装、探测、备份、回滚和卸载。 |
+| **采集生命周期** | 安全准备媒体 worker，并可选地向 OpenClaw 注册 Telegram adapter。 |
 | **安全初始化** | 首次运行可先 plan，再幂等 apply；不会调用 `sudo`。 |
 
 默认安全边界：只接受 loopback PostgreSQL/Ollama；MCP 只读；OpenClaw
@@ -118,7 +119,18 @@ rag-favorite openclaw status --probe
 ## Telegram 与视频采集（可选）
 
 `ingestion/` 提供视频/音频处理、作者发现、登录态管理、批量确认，以及可选的
-OpenClaw Telegram 插件。请从[中文接入指南](ingestion/README_ZH.md)开始。
+OpenClaw Telegram 插件。Phase 5 可以先预览再安装：
+
+```bash
+rag-favorite ingestion detect
+rag-favorite ingestion plan --install-dependencies --render-systemd --with-openclaw
+rag-favorite ingestion install --install-dependencies --render-systemd --with-openclaw
+rag-favorite ingestion status --with-openclaw
+```
+
+安装 Python 依赖、启用用户级服务、注册 OpenClaw 插件是三个独立的显式开关。
+请先阅读 [Phase 5 生命周期文档](docs/phase-5-ingestion-lifecycle.md)和
+[中文接入指南](ingestion/README_ZH.md)。
 
 <details>
 <summary><strong>查看媒体采集界面</strong></summary>
@@ -153,6 +165,7 @@ flowchart LR
 - [首次运行 Setup](docs/phase-2-first-run-setup.md)
 - [标准 MCP Server](docs/phase-3-standard-mcp.md)
 - [OpenClaw 安全接入](docs/phase-4-openclaw-integration.md)
+- [媒体采集与 Telegram 生命周期](docs/phase-5-ingestion-lifecycle.md)
 - [媒体采集部署](ingestion/docs/DEPLOYMENT.md)
 - [安全政策](SECURITY.md)
 - [贡献指南](CONTRIBUTING.md)
@@ -165,7 +178,7 @@ python -m pip install -e ".[mcp,ingestion,dev]"
 make check
 ```
 
-`v1.0.0` 是第一个稳定版。CLI、数据库迁移、只读 MCP 契约和受保护的
+`v1.1.0` 在稳定产品中加入了媒体采集与 Telegram adapter 生命周期。CLI、数据库迁移、只读 MCP 契约和受保护的
 OpenClaw 注册流程视为公开接口；媒体采集适配器可能随上游平台行为变化。
 
 ## License

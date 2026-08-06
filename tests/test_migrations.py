@@ -83,7 +83,9 @@ def test_migration_runner_applies_once_with_configured_dimensions(
     tmp_path: Path,
 ) -> None:
     connection = FakeConnection()
-    runner = MigrationRunner(_config(tmp_path, 1536), connector=lambda *_a, **_k: connection)
+    runner = MigrationRunner(
+        _config(tmp_path, 1536), connector=lambda *_a, **_k: connection
+    )
 
     assert runner.apply() == ("0001_document_rag.sql",)
     assert connection.closed

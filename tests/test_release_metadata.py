@@ -14,7 +14,7 @@ def test_release_version_is_consistent() -> None:
     metadata = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     version = metadata["project"]["version"]
 
-    assert version == "1.0.0"
+    assert version == "1.1.0"
     assert rag_favorite.__version__ == version
     assert f"## [{version}]" in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 

@@ -3,6 +3,27 @@
 All notable changes to this project are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-08-06
+
+### Added
+
+- Portable `ingestion detect`, `plan`, `install`, `status`, and `uninstall`
+  lifecycle commands.
+- Owner-only, secret-free ingestion environment bootstrap with portable product
+  paths and explicit dependency installation.
+- Guarded OpenClaw Telegram ingestion plugin registration using the official
+  plugin CLI, configuration snapshots, runtime contract probing, rollback, and
+  unmanaged collision protection.
+- Phase 5 operator guide covering service activation, credentials, permissions,
+  restart behavior, and preserved data.
+
+### Changed
+
+- Product and plugin versions advance to 1.1.0.
+- The optional Playwright client advances to 1.62.0 after compatibility tests.
+- OpenClaw backup metadata can identify either the MCP server or the ingestion
+  plugin while remaining compatible with existing restore records.
+
 ## [1.0.0] - 2026-08-06
 
 First stable local-first release.
@@ -33,3 +54,4 @@ First stable local-first release.
 - Standard MCP and OpenClaw registration expose only the read-only tool set.
 
 [1.0.0]: https://github.com/tzuo5/rag_favorite/releases/tag/v1.0.0
+[1.1.0]: https://github.com/tzuo5/rag_favorite/releases/tag/v1.1.0

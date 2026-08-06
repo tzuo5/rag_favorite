@@ -42,6 +42,7 @@ OpenClaw and does not require a hosted vector database or embedding API.
 | **Local embeddings** | Use Ollama locally and store vectors in PostgreSQL + pgvector. |
 | **Standard MCP** | Expose `rag_search` and `rag_status` through a read-only stdio server. |
 | **OpenClaw adapter** | Detect, plan, install, probe, back up, roll back, and remove an optional local registration. |
+| **Ingestion lifecycle** | Safely prepare media workers and optionally register the Telegram adapter with OpenClaw. |
 | **Safe first run** | Preview an idempotent setup, validate configuration, and start isolated services without `sudo`. |
 
 ### Designed for trust
@@ -146,7 +147,19 @@ See the [OpenClaw integration guide](docs/phase-4-openclaw-integration.md).
 
 The ingestion service provides video/audio processing, author discovery,
 session management, batch confirmation, and an optional OpenClaw Telegram
-plugin. Start with the [English ingestion guide](ingestion/README.md) or the
+plugin. Preview the portable Phase 5 lifecycle before installing anything:
+
+```bash
+rag-favorite ingestion detect
+rag-favorite ingestion plan --install-dependencies --render-systemd --with-openclaw
+rag-favorite ingestion install --install-dependencies --render-systemd --with-openclaw
+rag-favorite ingestion status --with-openclaw
+```
+
+Dependency installation, service activation, and OpenClaw registration are
+separate explicit gates. Start with the
+[Phase 5 lifecycle guide](docs/phase-5-ingestion-lifecycle.md), the
+[English ingestion guide](ingestion/README.md), or the
 [中文接入指南](ingestion/README_ZH.md).
 
 <details>
@@ -202,6 +215,7 @@ rag-favorite collection list
 rag-favorite init | doctor | ingest | search | status
 rag-favorite mcp {inspect,smoke,config}
 rag-favorite openclaw {detect,plan,install,status,backups,restore,uninstall}
+rag-favorite ingestion {detect,plan,install,status,uninstall}
 ```
 
 Run `rag-favorite <command> --help` for all options.
@@ -212,6 +226,7 @@ Run `rag-favorite <command> --help` for all options.
 - [First-run setup](docs/phase-2-first-run-setup.md)
 - [Standard MCP server](docs/phase-3-standard-mcp.md)
 - [Guarded OpenClaw integration](docs/phase-4-openclaw-integration.md)
+- [Portable media ingestion lifecycle](docs/phase-5-ingestion-lifecycle.md)
 - [Media ingestion deployment](ingestion/docs/DEPLOYMENT.md)
 - [Security policy](SECURITY.md)
 - [Contributing guide](CONTRIBUTING.md)
@@ -230,7 +245,8 @@ compatibility suites, Node plugin tests, compile checks, and a wheel build. See
 
 ## Project status
 
-`v1.0.0` is the first stable local-first release. The CLI, database migration,
+`v1.1.0` adds the portable media-ingestion and Telegram-adapter lifecycle to
+the stable local-first product. The CLI, database migration,
 read-only MCP contract, and guarded OpenClaw registration are considered public
 interfaces. The ingestion integrations depend on upstream platform behavior and
 are maintained as optional adapters.
