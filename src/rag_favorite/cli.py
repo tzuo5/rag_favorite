@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import replace
+from dataclasses import asdict, replace
 from pathlib import Path
 
 from . import __version__
@@ -19,6 +19,7 @@ from .mcp_support import (
     write_client_config,
 )
 from .migrations import MigrationError
+from .openclaw import OpenClawConflictError, OpenClawError, OpenClawManager
 from .rag import add_rag_commands
 from .rag import run_cli as run_rag_cli
 from .setup import SetupManager, SetupOptions, checks_ready, print_checks
@@ -83,6 +84,45 @@ def create_parser(config: AppConfig) -> argparse.ArgumentParser:
     mcp_config.add_argument("--force", action="store_true")
     mcp_commands.add_parser("inspect", help="Describe the packaged MCP server.")
     mcp_commands.add_parser("smoke", help="Run a real MCP stdio handshake.")
+
+    openclaw = commands.add_parser(
+        "openclaw", help="Manage the optional OpenClaw MCP registration."
+    )
+    openclaw_commands = openclaw.add_subparsers(
+        dest="openclaw_command", required=True
+    )
+    openclaw_common = argparse.ArgumentParser(add_help=False)
+    openclaw_common.add_argument("--openclaw-executable", type=Path)
+    openclaw_common.add_argument("--openclaw-config", type=Path)
+    openclaw_common.add_argument("--json", action="store_true")
+    openclaw_commands.add_parser(
+        "detect", parents=[openclaw_common], help="Detect OpenClaw capabilities."
+    )
+    openclaw_plan = openclaw_commands.add_parser(
+        "plan", parents=[openclaw_common], help="Preview registration changes."
+    )
+    openclaw_plan.add_argument("--replace", action="store_true")
+    openclaw_install = openclaw_commands.add_parser(
+        "install", parents=[openclaw_common], help="Register the MCP server."
+    )
+    openclaw_install.add_argument("--replace", action="store_true")
+    openclaw_install.add_argument("--no-probe", action="store_true")
+    openclaw_status = openclaw_commands.add_parser(
+        "status", parents=[openclaw_common], help="Inspect registration status."
+    )
+    openclaw_status.add_argument("--probe", action="store_true")
+    openclaw_uninstall = openclaw_commands.add_parser(
+        "uninstall", parents=[openclaw_common], help="Remove the MCP registration."
+    )
+    openclaw_uninstall.add_argument("--force", action="store_true")
+    openclaw_commands.add_parser(
+        "backups", parents=[openclaw_common], help="List managed config backups."
+    )
+    openclaw_restore = openclaw_commands.add_parser(
+        "restore", parents=[openclaw_common], help="Restore a managed config backup."
+    )
+    openclaw_restore.add_argument("metadata", type=Path)
+    openclaw_restore.add_argument("--force", action="store_true")
 
     add_rag_commands(commands, config)
     return parser
@@ -181,6 +221,42 @@ def _execute(raw: list[str]) -> int:
         else:
             names = protocol_smoke(config)
             print("MCP stdio handshake passed: " + ", ".join(names))
+    elif arguments.command == "openclaw":
+        manager = OpenClawManager(
+            config,
+            executable=arguments.openclaw_executable,
+            openclaw_config=arguments.openclaw_config,
+        )
+        if arguments.openclaw_command == "detect":
+            detection = manager.detect()
+            result = {**asdict(detection), "ready": detection.ready}
+        elif arguments.openclaw_command == "plan":
+            result = manager.plan(replace=arguments.replace)
+        elif arguments.openclaw_command == "install":
+            result = manager.install(
+                replace=arguments.replace,
+                probe=not arguments.no_probe,
+            )
+        elif arguments.openclaw_command == "status":
+            result = manager.status(probe=arguments.probe)
+        elif arguments.openclaw_command == "uninstall":
+            result = manager.uninstall(force=arguments.force)
+        elif arguments.openclaw_command == "backups":
+            result = {"backups": list(manager.list_backups())}
+        else:
+            result = manager.restore(arguments.metadata, force=arguments.force)
+        if arguments.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            for key, value in result.items():
+                print(f"{key}: {json.dumps(value, ensure_ascii=False)}")
+        if (
+            arguments.openclaw_command == "plan"
+            and result.get("action") == "conflict"
+        ) or (
+            arguments.openclaw_command == "status" and not result.get("ready")
+        ):
+            return 1
     else:
         run_rag_cli(arguments, config)
     return 0
@@ -193,7 +269,15 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         print("Operation cancelled.", file=sys.stderr)
         return 130
-    except (ConfigError, EmbeddingError, MigrationError, RuntimeError, OSError) as exc:
+    except (
+        ConfigError,
+        EmbeddingError,
+        MigrationError,
+        OpenClawConflictError,
+        OpenClawError,
+        RuntimeError,
+        OSError,
+    ) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 

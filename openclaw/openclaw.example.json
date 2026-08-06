@@ -84,21 +84,24 @@
   "mcp": {
     "servers": {
       "rag-favorite": {
-        "command": "<repo>/services/rag-mcp/.venv/bin/python",
+        "enabled": true,
+        "command": "<venv>/bin/python",
         "args": [
-          "<repo>/services/rag-mcp/rag_mcp_server.py"
+          "-m",
+          "rag_favorite.mcp_server"
         ],
-        "cwd": "<repo>/services/rag-mcp",
+        "env": {
+          "RAG_FAVORITE_CONFIG": "<config>/rag-favorite/config.toml",
+          "RAG_FAVORITE_OPENCLAW_MANAGED": "1"
+        },
+        "transport": "stdio",
         "connectionTimeoutMs": 30000,
         "requestTimeoutMs": 180000,
+        "supportsParallelToolCalls": true,
         "toolFilter": {
           "include": [
             "rag_search",
-            "rag_status",
-            "rag_memory_create",
-            "rag_memory_update",
-            "rag_memory_archive",
-            "rag_memory_restore"
+            "rag_status"
           ]
         }
       },

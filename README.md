@@ -82,6 +82,23 @@ opens no network listener and exposes the deterministic read-only tools
 `rag_search` and `rag_status`. See the
 [Phase 3 MCP guide](docs/phase-3-standard-mcp.md).
 
+## Optional OpenClaw registration
+
+When OpenClaw is already installed and onboarded, preview and register the same
+packaged MCP server through OpenClaw's validated configuration commands:
+
+```bash
+rag-favorite openclaw detect
+rag-favorite openclaw plan
+rag-favorite openclaw install
+rag-favorite openclaw status --probe
+```
+
+Every mutation creates an owner-only, checksummed backup. Registration is
+idempotent, unmanaged name collisions fail closed, probe failures roll back,
+and uninstall targets only the managed `rag-favorite` server. See the
+[Phase 4 OpenClaw guide](docs/phase-4-openclaw-integration.md).
+
 ## Collections
 
 Collections are configured data, not hard-coded Python constants:
@@ -141,10 +158,10 @@ entrypoint and delegates to the installed `rag_favorite` package.
 
 ## OpenClaw boundary
 
-The repository does not bundle OpenClaw. It contains only an optional plugin,
-skill and example configuration. Standard local MCP packaging is complete;
-automated OpenClaw discovery, configuration backup and registration remain
-Phase 4 work.
+The repository does not bundle OpenClaw. It contains only optional integration
+commands, a Telegram ingestion plugin, skills and an example configuration.
+Standard MCP packaging and guarded OpenClaw registration are complete without
+changing channel or gateway policy.
 
 ## Development checks
 

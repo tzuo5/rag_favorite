@@ -62,8 +62,8 @@ rag-favorite mcp config --output ./rag-favorite.mcp.json
 ```
 
 Existing files are never overwritten unless `--force` is supplied. Phase 3
-does not merge this fragment into a client's configuration. Automated
-OpenClaw discovery and registration belong to Phase 4.
+does not merge this fragment into a client's configuration. OpenClaw users can
+use the guarded Phase 4 workflow in `phase-4-openclaw-integration.md`.
 
 ## Stable tool contract
 
