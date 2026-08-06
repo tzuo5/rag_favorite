@@ -63,6 +63,25 @@ Set `RAG_FAVORITE_CONFIG=/path/to/config.toml` or pass
 [`config/rag-favorite.example.toml`](config/rag-favorite.example.toml) and the
 [Phase 1 design note](docs/phase-1-product-core.md).
 
+## Standard local MCP server
+
+Install the MCP extra, run a real stdio handshake, and generate a generic
+client configuration fragment:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -e '.[mcp]'
+
+.venv/bin/rag-favorite mcp inspect
+.venv/bin/rag-favorite mcp smoke
+.venv/bin/rag-favorite mcp config
+```
+
+Clients launch `.venv/bin/rag-favorite-mcp` over stdio. The packaged server
+opens no network listener and exposes the deterministic read-only tools
+`rag_search` and `rag_status`. See the
+[Phase 3 MCP guide](docs/phase-3-standard-mcp.md).
+
 ## Collections
 
 Collections are configured data, not hard-coded Python constants:
@@ -108,7 +127,9 @@ only accepts loopback PostgreSQL and Ollama endpoints.
   indexing, retrieval and unified CLI.
 - `ingestion/`: video/audio download, transcription, author discovery and the
   optional OpenClaw Telegram plugin.
-- `services/rag-mcp/`: MCP compatibility entrypoint and governed memory tools.
+- `src/rag_favorite/mcp_server.py`: standard packaged read-only MCP server.
+- `services/rag-mcp/`: legacy MCP compatibility entrypoint and governed memory
+  tools.
 - `services/cooking-rag/`: optional structured recipe compatibility extension.
 - `services/rag-postgres/`: PostgreSQL + pgvector development compose service.
 - `services/ollama/`: Ollama development compose service.
@@ -121,8 +142,9 @@ entrypoint and delegates to the installed `rag_favorite` package.
 ## OpenClaw boundary
 
 The repository does not bundle OpenClaw. It contains only an optional plugin,
-skill and example configuration. Standard local MCP packaging and automated
-OpenClaw registration are scheduled for Phase 3 and Phase 4 respectively.
+skill and example configuration. Standard local MCP packaging is complete;
+automated OpenClaw discovery, configuration backup and registration remain
+Phase 4 work.
 
 ## Development checks
 

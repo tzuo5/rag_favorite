@@ -12,6 +12,12 @@ from . import __version__
 from .bootstrap import initialize_config
 from .config import AppConfig, ConfigError, default_config, load_config, validate_config
 from .embedding import EmbeddingError
+from .mcp_support import (
+    client_config,
+    protocol_smoke,
+    server_info,
+    write_client_config,
+)
 from .migrations import MigrationError
 from .rag import add_rag_commands
 from .rag import run_cli as run_rag_cli
@@ -67,6 +73,16 @@ def create_parser(config: AppConfig) -> argparse.ArgumentParser:
     setup.add_argument("--openclaw-media-dir", type=Path)
     setup.add_argument("--wait-seconds", type=int, default=60)
     setup.add_argument("--json", action="store_true")
+
+    mcp = commands.add_parser("mcp", help="Configure and verify the MCP server.")
+    mcp_commands = mcp.add_subparsers(dest="mcp_command", required=True)
+    mcp_config = mcp_commands.add_parser(
+        "config", help="Generate a standard mcpServers configuration fragment."
+    )
+    mcp_config.add_argument("--output", type=Path)
+    mcp_config.add_argument("--force", action="store_true")
+    mcp_commands.add_parser("inspect", help="Describe the packaged MCP server.")
+    mcp_commands.add_parser("smoke", help="Run a real MCP stdio handshake.")
 
     add_rag_commands(commands, config)
     return parser
@@ -146,6 +162,25 @@ def _execute(raw: list[str]) -> int:
         print_checks(checks, as_json=arguments.json)
         if arguments.setup_action == "status" and not checks_ready(checks):
             return 1
+    elif arguments.command == "mcp":
+        if not config.source.is_file():
+            raise ConfigError(
+                f"Configuration is missing; run rag-favorite setup first: {config.source}"
+            )
+        if arguments.mcp_command == "config":
+            payload = client_config(config)
+            if arguments.output:
+                destination = write_client_config(
+                    arguments.output, payload, force=arguments.force
+                )
+                print(f"MCP configuration written: {destination}")
+            else:
+                print(json.dumps(payload, ensure_ascii=False, indent=2))
+        elif arguments.mcp_command == "inspect":
+            print(json.dumps(server_info(config), ensure_ascii=False, indent=2))
+        else:
+            names = protocol_smoke(config)
+            print("MCP stdio handshake passed: " + ", ".join(names))
     else:
         run_rag_cli(arguments, config)
     return 0

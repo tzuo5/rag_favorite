@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rag-favorite"
-version = "0.3.0"
+version = "0.4.0"
 description = "Local-first document and media RAG with a standard MCP interface"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -25,6 +25,7 @@ dev = ["pytest>=8,<10"]
 
 [project.scripts]
 rag-favorite = "rag_favorite.cli:main"
+rag-favorite-mcp = "rag_favorite.mcp_server:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
