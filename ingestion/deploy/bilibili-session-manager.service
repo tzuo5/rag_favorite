@@ -1,0 +1,25 @@
+[Unit]
+Description=Bilibili QR login and cookie refresh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ubuntu/AI-Video-Transcriber
+EnvironmentFile=/home/ubuntu/AI-Video-Transcriber/.env
+EnvironmentFile=-/home/ubuntu/.openclaw/.env
+ExecStart=/home/ubuntu/AI-Video-Transcriber/.venv/bin/python -m backend.bilibili_session.cli login
+SuccessExitStatus=4
+TimeoutStartSec=4min
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/ubuntu/.local/share/bilibili-session /home/ubuntu/AI-Video-Transcriber/secrets
+RestrictSUIDSGID=true
+LockPersonality=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

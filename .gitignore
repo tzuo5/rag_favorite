@@ -1,0 +1,58 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.env
+!*.env.example
+secrets/
+**/secrets/
+*.pem
+*.key
+*cookies*.txt
+
+# Python / Node
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+node_modules/
+.pytest_cache/
+.ruff_cache/
+
+# Runtime data
+backups/
+**/backups/
+.runtime/
+**/.runtime/
+staging/
+temp/
+logs/
+*.log
+*.dump
+*.custom
+*.sqlite*
+*.tar.gz
+
+# User knowledge and OpenClaw state
+知识库/
+memory/
+openclaw.json
+rag-mcp-runtime.env
+openclaw-workspace-state.json
+
+# Media and session state
+*.mp4
+*.mkv
+*.webm
+*.m4a
+*.mp3
+*.wav
+.xhs-session/
+playwright/.auth/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+

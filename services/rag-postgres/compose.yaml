@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.2-pg16-bookworm
+    container_name: rag-postgres
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    ports:
+      - "127.0.0.1:5432:5432"
+
+    volumes:
+      - rag_postgres_data:/var/lib/postgresql/data
+      - ./init/01-enable-vector.sql:/docker-entrypoint-initdb.d/01-enable-vector.sql:ro
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  rag_postgres_data:
+    name: rag_postgres_data

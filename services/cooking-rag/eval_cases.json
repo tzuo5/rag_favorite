@@ -1,0 +1,13 @@
+[
+  {"query": "羊排需要多少度烤多久", "expected_title": "法式香草烤羊排 佐土豆泥"},
+  {"query": "莫吉托怎么调", "expected_title": "莫吉托"},
+  {"query": "糖醋小排需要放多少醋", "expected_title": "糖醋小排"},
+  {"query": "黑松露蘑菇烩饭怎么做", "expected_title": "黑松露蘑菇烩饭"},
+  {"query": "公爵夫人土豆的做法", "expected_title": "公爵夫人土豆"},
+  {"query": "芦笋森林浓汤需要什么食材", "expected_title": "芦笋森林浓汤"},
+  {"query": "牛油果三文鱼塔塔", "expected_title": "牛油果三文鱼塔塔"},
+  {"query": "香煎带子佐豌豆泥", "expected_title": "香煎带子佐豌豆泥"},
+  {"query": "寿司饭怎么做", "expect_no_match": true},
+  {"query": "东京明天天气怎么样", "expect_no_match": true},
+  {"query": "我的服务器运行什么模型", "expect_no_match": true}
+]

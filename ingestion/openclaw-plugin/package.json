@@ -1,0 +1,13 @@
+{
+  "name": "video-knowledge-ingest",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test *.test.js"
+  },
+  "openclaw": {
+    "extensions": ["./index.js"]
+  }
+}

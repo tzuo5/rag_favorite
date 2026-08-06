@@ -1,0 +1,124 @@
+{
+  "agents": {
+    "defaults": {
+      "workspace": "<workspace>",
+      "memorySearch": {
+        "enabled": true,
+        "provider": "ollama",
+        "model": "qwen3-embedding:0.6b",
+        "fallback": "none",
+        "remote": {
+          "baseUrl": "http://127.0.0.1:11434",
+          "apiKey": "ollama-local",
+          "nonBatchConcurrency": 1
+        },
+        "chunking": {
+          "tokens": 400,
+          "overlap": 80
+        },
+        "sync": {
+          "onSessionStart": true,
+          "onSearch": true,
+          "watch": true,
+          "watchDebounceMs": 1500,
+          "embeddingBatchTimeoutSeconds": 600
+        },
+        "query": {
+          "maxResults": 6,
+          "minScore": 0.35,
+          "hybrid": {
+            "enabled": true,
+            "vectorWeight": 0.7,
+            "textWeight": 0.3,
+            "candidateMultiplier": 4
+          }
+        }
+      }
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "port": 18789,
+    "bind": "loopback",
+    "auth": {
+      "mode": "token",
+      "token": "<gateway-token>"
+    }
+  },
+  "plugins": {
+    "entries": {
+      "telegram": {
+        "enabled": true
+      },
+      "video-knowledge-ingest": {
+        "enabled": true,
+        "config": {
+          "python": "<repo>/ingestion/.venv/bin/python",
+          "projectDir": "<repo>/ingestion"
+        },
+        "hooks": {
+          "allowConversationAccess": true
+        }
+      }
+    },
+    "load": {
+      "paths": [
+        "<repo>/ingestion/openclaw-plugin"
+      ]
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": {
+        "source": "env",
+        "id": "TELEGRAM_BOT_TOKEN"
+      },
+      "dmPolicy": "allowlist",
+      "groupPolicy": "disabled",
+      "allowFrom": [
+        "<telegram-user-id>"
+      ]
+    }
+  },
+  "mcp": {
+    "servers": {
+      "gordon-rag": {
+        "command": "<repo>/services/rag-mcp/.venv/bin/python",
+        "args": [
+          "<repo>/services/rag-mcp/rag_mcp_server.py"
+        ],
+        "cwd": "<repo>/services/rag-mcp",
+        "connectTimeout": 30,
+        "timeout": 180,
+        "toolFilter": {
+          "include": [
+            "rag_search",
+            "rag_status",
+            "rag_memory_create",
+            "rag_memory_update",
+            "rag_memory_archive",
+            "rag_memory_restore"
+          ]
+        }
+      },
+      "cooking-rag": {
+        "command": "<repo>/services/cooking-rag/.venv/bin/python",
+        "args": [
+          "<repo>/services/cooking-rag/mcp_server.py"
+        ],
+        "cwd": "<repo>/services/cooking-rag",
+        "connectTimeout": 30,
+        "timeout": 180,
+        "toolFilter": {
+          "include": [
+            "cooking_recipe_create",
+            "cooking_recipe_search",
+            "cooking_recipe_get",
+            "cooking_rag_status"
+          ]
+        }
+      }
+    }
+  }
+}

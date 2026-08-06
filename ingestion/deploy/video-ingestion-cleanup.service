@@ -1,0 +1,12 @@
+[Unit]
+Description=Remove expired video ingestion temporary files
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ubuntu/AI-Video-Transcriber
+EnvironmentFile=/home/ubuntu/AI-Video-Transcriber/.env
+ExecStart=/home/ubuntu/AI-Video-Transcriber/.venv/bin/python -m backend.ingestion.cli cleanup
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/ubuntu/AI-Video-Transcriber/temp
