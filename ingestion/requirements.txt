@@ -13,4 +13,4 @@ python-dotenv>=1.0.1
 PyYAML>=6.0.2
 xhshow>=0.1.9,<0.3
 playwright==1.54.0
-qrcode[pil]>=8.0,<9
+qrcode[pil]>=8.2,<9
