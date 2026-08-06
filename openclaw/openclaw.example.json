@@ -83,14 +83,14 @@
   },
   "mcp": {
     "servers": {
-      "gordon-rag": {
+      "rag-favorite": {
         "command": "<repo>/services/rag-mcp/.venv/bin/python",
         "args": [
           "<repo>/services/rag-mcp/rag_mcp_server.py"
         ],
         "cwd": "<repo>/services/rag-mcp",
-        "connectTimeout": 30,
-        "timeout": 180,
+        "connectionTimeoutMs": 30000,
+        "requestTimeoutMs": 180000,
         "toolFilter": {
           "include": [
             "rag_search",
@@ -108,8 +108,8 @@
           "<repo>/services/cooking-rag/mcp_server.py"
         ],
         "cwd": "<repo>/services/cooking-rag",
-        "connectTimeout": 30,
-        "timeout": 180,
+        "connectionTimeoutMs": 30000,
+        "requestTimeoutMs": 180000,
         "toolFilter": {
           "include": [
             "cooking_recipe_create",

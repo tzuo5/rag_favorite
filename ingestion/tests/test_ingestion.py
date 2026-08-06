@@ -935,7 +935,8 @@ def test_cleanup_preserves_requested_file(tmp_path: Path) -> None:
 
 def test_chunking_reuses_main_knowledge_implementation() -> None:
     import importlib.util
-    spec = importlib.util.spec_from_file_location("rag", "/home/ubuntu/services/rag-app/rag.py")
+    service = Path(__file__).resolve().parents[2] / "services" / "rag-app" / "rag.py"
+    spec = importlib.util.spec_from_file_location("rag", service)
     module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
     chunks = module.chunk_text("中文段落。" * 500)
     assert len(chunks) > 1 and all(len(chunk) <= module.MAX_CHUNK_CHARACTERS for chunk in chunks)
@@ -943,11 +944,15 @@ def test_chunking_reuses_main_knowledge_implementation() -> None:
 
 def test_destination_roots_are_existing_knowledge_bases(monkeypatch: pytest.MonkeyPatch) -> None:
     from backend.ingestion.config import Settings
+    from backend.ingestion.product_config import product_config
     settings = Settings()
-    assert str(settings.main_markdown_root).startswith(
-        "/home/ubuntu/知识库/General Resources"
+    config = product_config()
+    assert settings.main_markdown_root.is_relative_to(
+        config.collection("general").path
     )
-    assert str(settings.cooking_markdown_root).startswith("/home/ubuntu/知识库/Cooking")
+    assert settings.cooking_markdown_root.is_relative_to(
+        config.collection("cooking").path
+    )
 
 
 def test_unified_indexing_service_routes_all_eight_knowledge_bases() -> None:
@@ -1011,38 +1016,38 @@ def test_unified_indexing_service_rejects_unknown_knowledge_base() -> None:
 
 
 @pytest.mark.parametrize(
-    ("destination", "expected_parent"),
+    "destination",
     [
-        (Destination.THOUGHT_POLITICS, "Thought and Politics/4. Video Transcripts"),
-        (Destination.TECH, "Technology/3. Video Transcripts"),
-        (Destination.FINANCE, "Finance and Investment/2. Video Transcripts"),
-        (Destination.CAREER, "Career Development/2. Video Transcripts"),
-        (
-            Destination.SOCIAL_CONDUCT,
-            "Chinese Social Relations and Conduct/2. Video Transcripts",
-        ),
-        (
-            Destination.LITERATURE_CULTURE,
-            "Literature and Culture/3. Video Transcripts",
-        ),
-        (Destination.GENERAL, "General Resources/2. Video Transcripts"),
-        (Destination.COOKING, "Cooking/5. Video Transcripts"),
+        Destination.THOUGHT_POLITICS,
+        Destination.TECH,
+        Destination.FINANCE,
+        Destination.CAREER,
+        Destination.SOCIAL_CONDUCT,
+        Destination.LITERATURE_CULTURE,
+        Destination.GENERAL,
+        Destination.COOKING,
     ],
 )
 def test_explicit_destination_controls_markdown_path(
     destination: Destination,
-    expected_parent: str,
 ) -> None:
     from backend.ingestion.destinations import KnowledgeDestinationService
+    from backend.ingestion.product_config import product_config
 
-    service = KnowledgeDestinationService(Settings(), vectors=object())
+    settings = Settings()
+    service = KnowledgeDestinationService(settings, vectors=object())
     target = service.target_path(
         destination,
         "测试标题",
         "00000000-0000-0000-0000-000000000001",
         metadata={"domain": "finance"},
     )
-    assert str(target.parent).endswith(expected_parent)
+    expected = (
+        settings.cooking_markdown_root
+        if destination == Destination.COOKING
+        else product_config().collection(destination.value).path
+    )
+    assert target.parent == expected
 
 
 def test_main_destination_routes_lao_zhou_to_politics(tmp_path: Path) -> None:

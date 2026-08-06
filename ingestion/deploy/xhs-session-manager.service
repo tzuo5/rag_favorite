@@ -5,17 +5,17 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=/home/ubuntu/AI-Video-Transcriber
-EnvironmentFile=/home/ubuntu/AI-Video-Transcriber/.env
-EnvironmentFile=-/home/ubuntu/.openclaw/.env
-ExecStart=/usr/bin/xvfb-run -a /home/ubuntu/AI-Video-Transcriber/.venv/bin/python -m backend.xhs_session.cli refresh
+WorkingDirectory=@INGESTION_DIR@
+EnvironmentFile=@INGESTION_DIR@/.env
+EnvironmentFile=-@OPENCLAW_ENV@
+ExecStart=/usr/bin/xvfb-run -a @INGESTION_DIR@/.venv/bin/python -m backend.xhs_session.cli refresh
 SuccessExitStatus=4
 TimeoutStartSec=7min
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/ubuntu/.local/share/xhs-session /home/ubuntu/AI-Video-Transcriber/secrets
+ReadWritePaths=@PRODUCT_DATA_DIR@/sessions/xiaohongshu @INGESTION_DIR@/secrets
 RestrictSUIDSGID=true
 LockPersonality=true
 StandardOutput=journal

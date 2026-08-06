@@ -58,7 +58,7 @@ def main() -> None:
     documents = [
         (
             "server",
-            "Gordon 的 RAG 系统使用 PostgreSQL 和 pgvector "
+            "本地 RAG 系统使用 PostgreSQL 和 pgvector "
             "保存并检索文档向量。",
         ),
         (
@@ -67,7 +67,7 @@ def main() -> None:
         ),
         (
             "school",
-            "Gordon 正在 UIUC 学习机械工程和计算机科学课程。",
+            "用户正在学习机械工程和计算机科学课程。",
         ),
     ]
 

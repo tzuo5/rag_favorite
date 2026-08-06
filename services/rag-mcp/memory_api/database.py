@@ -11,8 +11,10 @@ from typing import Final
 import psycopg
 from dotenv import dotenv_values
 
+from product_config import CONFIG
+
 DEFAULT_RUNTIME_ENV_PATH: Final[Path] = (
-    Path.home() / ".openclaw" / "rag-mcp-runtime.env"
+    CONFIG.paths.config_dir / "mcp-runtime.env"
 )
 
 _ALLOWED_HOSTS: Final[frozenset[str]] = frozenset(
@@ -118,7 +120,7 @@ def connect_runtime_database(
         user=resolved.user,
         password=resolved.password,
         connect_timeout=5,
-        application_name="gordon-rag-mcp",
+        application_name="rag-favorite-mcp",
         options=(
             "-c statement_timeout=10000 "
             "-c lock_timeout=3000 "

@@ -1,0 +1,4 @@
+interface:
+  display_name: "rag-favorite Cooking"
+  short_description: "Create and search the owner’s private recipe knowledge base"
+  default_prompt: "Use $rag-favorite-cooking-rag to organize and save a new recipe or retrieve an existing one."

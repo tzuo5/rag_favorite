@@ -1,4 +1,0 @@
-interface:
-  display_name: "Gordon Cooking RAG"
-  short_description: "Create and search Gordon’s private recipe knowledge base"
-  default_prompt: "Use $gordon-cooking-rag to organize and save a new recipe or retrieve an existing one."

@@ -4,29 +4,18 @@ import re
 from pathlib import PurePosixPath
 from typing import Any, Protocol, TypedDict
 
-TOPIC_KNOWLEDGE_BASES = (
-    "thought-politics",
-    "tech",
-    "finance",
-    "career",
-    "social-conduct",
-    "literature-culture",
-    "general",
-)
-ALL_KNOWLEDGE_BASES = (*TOPIC_KNOWLEDGE_BASES, "cooking")
+from product_config import CONFIG
+
+TOPIC_KNOWLEDGE_BASES = tuple(CONFIG.collections)
+ALL_KNOWLEDGE_BASES = TOPIC_KNOWLEDGE_BASES
 
 KNOWLEDGE_BASE_DESCRIPTIONS = {
-    "thought-politics": "思想与政治（含老周横眉）",
-    "tech": "技术、软件、服务器与人工智能",
-    "finance": "金融与投资",
-    "career": "职业发展",
-    "social-conduct": "中国人情世故、沟通分寸、职场与官场行为",
-    "literature-culture": "文学与文化",
-    "general": "尚未归入其他主题的综合资料",
-    "cooking": "菜谱、食材、烹饪技术、饮品、菜单与备餐",
+    key: collection.name for key, collection in CONFIG.collections.items()
 }
 
-_HOST_PATH = re.compile(r"/home/ubuntu(?:/[^\s)\]}>\"']*)?")
+_HOST_PATH = re.compile(
+    r"(?:/home/[^/\s]+|/Users/[^/\s]+)(?:/[^\s)\]}>\"']*)?"
+)
 
 
 class SearchResult(TypedDict):

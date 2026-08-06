@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib.util
 import os
 import sys
 from dataclasses import dataclass
@@ -11,22 +10,14 @@ import yaml
 
 from .config import Settings
 from .models import Destination
+from .product_config import SOURCE_ROOT, product_config
 from .security import safe_filename
 
+PRODUCT_CONFIG = product_config()
 TOPIC_ROOTS = {
-    "thought-politics": Path(
-        "/home/ubuntu/知识库/Thought and Politics/4. Video Transcripts"
-    ),
-    "tech": Path("/home/ubuntu/知识库/Technology/3. Video Transcripts"),
-    "finance": Path("/home/ubuntu/知识库/Finance and Investment/2. Video Transcripts"),
-    "career": Path("/home/ubuntu/知识库/Career Development/2. Video Transcripts"),
-    "social-conduct": Path(
-        "/home/ubuntu/知识库/Chinese Social Relations and Conduct/2. Video Transcripts"
-    ),
-    "literature-culture": Path(
-        "/home/ubuntu/知识库/Literature and Culture/3. Video Transcripts"
-    ),
-    "general": Path("/home/ubuntu/知识库/General Resources/2. Video Transcripts"),
+    key: collection.path
+    for key, collection in PRODUCT_CONFIG.collections.items()
+    if collection.template != "cooking"
 }
 
 DOMAIN_TO_TOPIC = {
@@ -100,20 +91,16 @@ class TopicIndexerAdapter:
     ) -> IndexResult:
         if knowledge_base not in TOPIC_ROOTS:
             raise ValueError("topic indexer received an invalid knowledge base")
-        spec = importlib.util.spec_from_file_location(
-            "existing_main_rag",
-            "/home/ubuntu/services/rag-app/rag.py",
-        )
-        if not spec or not spec.loader:
-            raise RuntimeError("main knowledge indexer is unavailable")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        indexed = bool(module.ingest_file(markdown_path, knowledge_base))
+        if str(SOURCE_ROOT) not in sys.path:
+            sys.path.insert(0, str(SOURCE_ROOT))
+        from rag_favorite.rag import ingest_file
+
+        indexed = bool(ingest_file(markdown_path, knowledge_base, PRODUCT_CONFIG))
         return IndexResult(knowledge_base=knowledge_base, indexed=indexed)
 
 
 class CookingIndexerAdapter:
-    """Adapter that preserves the Cooking Vault and recipe index."""
+    """Compatibility adapter for the optional Cooking collection template."""
 
     def __init__(self, settings: Settings):
         self.settings = settings
@@ -126,37 +113,12 @@ class CookingIndexerAdapter:
     ) -> IndexResult:
         if knowledge_base != "cooking":
             raise ValueError("cooking indexer received an invalid knowledge base")
-        service_dir = Path("/home/ubuntu/services/cooking-rag")
-        sys.path.insert(0, str(service_dir))
-        previous = os.environ.get("COOKING_RAG_ENV_FILE")
-        os.environ["COOKING_RAG_ENV_FILE"] = str(self.settings.cooking_env)
-        try:
-            from embedding import OllamaEmbeddingClient
-            from recipe_documents import load_recipe_document
-            from repository import RecipeIndexer
+        if str(SOURCE_ROOT) not in sys.path:
+            sys.path.insert(0, str(SOURCE_ROOT))
+        from rag_favorite.rag import ingest_file
 
-            class PgvectorCompatibleEmbeddingClient(OllamaEmbeddingClient):
-                def embed_documents(self, texts: list[str]) -> list[list[float]]:
-                    return [list(vector) for vector in super().embed_documents(texts)]
-
-            vault = Path("/home/ubuntu/知识库/Cooking")
-            document = load_recipe_document(vault, markdown_path)
-            indexed = bool(
-                RecipeIndexer(
-                    vault,
-                    PgvectorCompatibleEmbeddingClient(),
-                ).index_document(document)
-            )
-            return IndexResult(knowledge_base="cooking", indexed=indexed)
-        finally:
-            if previous is None:
-                os.environ.pop("COOKING_RAG_ENV_FILE", None)
-            else:
-                os.environ["COOKING_RAG_ENV_FILE"] = previous
-            try:
-                sys.path.remove(str(service_dir))
-            except ValueError:
-                pass
+        indexed = bool(ingest_file(markdown_path, "cooking", PRODUCT_CONFIG))
+        return IndexResult(knowledge_base="cooking", indexed=indexed)
 
 
 class UnifiedIndexingService:

@@ -2,7 +2,7 @@
 
 状态：设计完成
 更新时间：2026-07-23（Asia/Shanghai）
-适用项目：`/home/ubuntu/AI-Video-Transcriber`
+适用项目：rag-favorite `ingestion/` 组件
 
 ## 1. 目标与范围
 

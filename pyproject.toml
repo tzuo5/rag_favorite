@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-favorite"
+version = "0.2.0"
+description = "Local-first document and media RAG with a standard MCP interface"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+authors = [{ name = "rag-favorite contributors" }]
+dependencies = [
+  "pgvector>=0.4,<0.6",
+  "psycopg[binary]>=3.2,<3.4",
+]
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.26,<2", "pydantic>=2.7,<3"]
+ingestion = [
+  "PyYAML>=6.0,<7",
+  "python-dotenv>=1.0,<2",
+]
+dev = ["pytest>=8,<10"]
+
+[project.scripts]
+rag-favorite = "rag_favorite.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -7,9 +7,6 @@ import shutil
 import subprocess
 from pathlib import Path
 
-import psycopg
-from dotenv import dotenv_values
-
 from backend.ingestion.config import Settings
 from backend.ingestion.models import Destination
 from backend.ingestion.service import VideoIngestionService
@@ -60,12 +57,15 @@ async def run() -> dict:
         second = service.sql.get_job(str(second["id"])); await service.process(second)
         second = service.sql.get_job(str(second["id"])); assert second and second["state"] == "COMPLETED"
         cooking_path = service.destinations.target_path(Destination.COOKING, second["title"], str(second["document_id"])); paths.add(cooking_path)
-        relative_cooking = cooking_path.relative_to("/home/ubuntu/知识库/Cooking").as_posix()
-        cooking_cfg = dotenv_values(settings.cooking_env)
-        with psycopg.connect(host=cooking_cfg["PGHOST"], port=cooking_cfg["PGPORT"], dbname=cooking_cfg["PGDATABASE"], user=cooking_cfg["PGUSER"], password=cooking_cfg["PGPASSWORD"]) as conn:
-            cooking_row = conn.execute("SELECT r.id,count(s.id) FROM cooking_recipes r JOIN cooking_recipe_sections s ON s.recipe_id=r.id WHERE r.source_path=%s GROUP BY r.id", (relative_cooking,)).fetchone()
-        assert cooking_row and cooking_row[1] > 0
-        report["duplicate_to_cooking"] = {"state": second["state"], "sections": cooking_row[1], "reused_transcript": True}
+        with service.sql.connection() as conn:
+            cooking_row = conn.execute(
+                "SELECT d.id,count(c.id) AS chunks FROM rag_documents d "
+                "JOIN rag_chunks c ON c.document_id=d.id "
+                "WHERE d.source_path=%s AND d.knowledge_base='cooking' GROUP BY d.id",
+                (str(cooking_path),),
+            ).fetchone()
+        assert cooking_row and cooking_row["chunks"] > 0
+        report["duplicate_to_cooking"] = {"state": second["state"], "chunks": cooking_row["chunks"], "reused_transcript": True}
 
         third = service.sql.create_job(user_id="1000000001", chat_id="test", message_id="1003", input_kind="media", input_value=str(media), media_type="video/mp4", caption="Cancel smoke")
         jobs.append(str(third["id"])); await service.process(third)
@@ -90,11 +90,6 @@ async def run() -> dict:
             if jobs:
                 conn.execute("DELETE FROM video_knowledge_documents WHERE job_id=ANY(%s::uuid[])", (jobs,))
                 conn.execute("DELETE FROM video_ingestion_jobs WHERE id=ANY(%s::uuid[])", (jobs,))
-        cooking_cfg = dotenv_values(settings.cooking_env)
-        with psycopg.connect(host=cooking_cfg["PGHOST"], port=cooking_cfg["PGPORT"], dbname=cooking_cfg["PGDATABASE"], user=cooking_cfg["PGUSER"], password=cooking_cfg["PGPASSWORD"]) as conn:
-            for path in paths:
-                if path.is_relative_to(Path("/home/ubuntu/知识库/Cooking")):
-                    conn.execute("DELETE FROM cooking_recipes WHERE source_path=%s", (path.relative_to("/home/ubuntu/知识库/Cooking").as_posix(),))
         for path in paths: path.unlink(missing_ok=True)
         for job_id in jobs:
             for staged in settings.staging_root.glob(f"*--{job_id[:8]}.md"):

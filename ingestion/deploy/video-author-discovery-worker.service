@@ -5,10 +5,10 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/ubuntu/AI-Video-Transcriber
-EnvironmentFile=/home/ubuntu/AI-Video-Transcriber/.env
-EnvironmentFile=/home/ubuntu/.openclaw/.env
-ExecStart=/home/ubuntu/AI-Video-Transcriber/.venv/bin/python -m backend.ingestion.cli discovery-worker
+WorkingDirectory=@INGESTION_DIR@
+EnvironmentFile=@INGESTION_DIR@/.env
+EnvironmentFile=@OPENCLAW_ENV@
+ExecStart=@INGESTION_DIR@/.venv/bin/python -m backend.ingestion.cli discovery-worker
 Restart=on-failure
 RestartSec=10
 TimeoutStopSec=30

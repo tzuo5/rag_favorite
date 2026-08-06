@@ -18,6 +18,9 @@ __pycache__/
 node_modules/
 .pytest_cache/
 .ruff_cache/
+build/
+dist/
+*.egg-info/
 
 # Runtime data
 backups/
@@ -55,4 +58,3 @@ playwright/.auth/
 .idea/
 .vscode/
 *.swp
-

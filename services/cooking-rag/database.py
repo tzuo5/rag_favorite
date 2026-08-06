@@ -4,11 +4,12 @@ import os
 from pathlib import Path
 
 import psycopg
-from dotenv import dotenv_values
 from pgvector.psycopg import register_vector
 
+from product_config import CONFIG
+from rag_favorite.config import read_env_file
 
-DEFAULT_ENV_FILE = Path("/home/ubuntu/services/cooking-rag/runtime.env")
+DEFAULT_ENV_FILE = CONFIG.database.credentials_file
 
 
 def load_database_settings(env_file: Path | None = None) -> dict[str, str]:
@@ -17,11 +18,27 @@ def load_database_settings(env_file: Path | None = None) -> dict[str, str]:
     )
     required = ("PGHOST", "PGPORT", "PGDATABASE", "PGUSER", "PGPASSWORD")
     selected_exists = selected.is_file()
-    raw = dict(dotenv_values(selected)) if selected_exists else {}
+    raw = read_env_file(selected) if selected_exists else {}
     if env_file is None and not selected_exists:
         for name in required:
             if os.environ.get(name):
                 raw[name] = os.environ[name]
+    defaults = {
+        "PGHOST": CONFIG.database.host,
+        "PGPORT": str(CONFIG.database.port),
+        "PGDATABASE": CONFIG.database.name,
+        "PGUSER": CONFIG.database.user,
+        "PGPASSWORD": (
+            raw.get("RAG_DATABASE_PASSWORD")
+            or raw.get("POSTGRES_PASSWORD")
+        ),
+    }
+    aliases = {
+        "PGDATABASE": raw.get("RAG_DATABASE_NAME") or raw.get("POSTGRES_DB"),
+        "PGUSER": raw.get("RAG_DATABASE_USER") or raw.get("POSTGRES_USER"),
+    }
+    for name in required:
+        raw[name] = raw.get(name) or aliases.get(name) or defaults.get(name)
     missing = [name for name in required if not raw.get(name)]
     if missing:
         raise RuntimeError("cooking RAG database settings are incomplete")

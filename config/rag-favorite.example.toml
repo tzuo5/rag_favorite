@@ -1,0 +1,27 @@
+# Copy this file to ~/.config/rag-favorite/config.toml.
+# Relative paths are resolved from the directory containing this file.
+
+[database]
+host = "127.0.0.1"
+port = 5432
+name = "ragdb"
+user = "rag_admin"
+credentials_file = "secrets.env"
+
+[embedding]
+url = "http://127.0.0.1:11434/api/embed"
+model = "qwen3-embedding:0.6b"
+dimensions = 1024
+timeout_seconds = 120
+batch_size = 4
+
+[[collections]]
+key = "general"
+name = "General"
+path = "~/.local/share/rag-favorite/knowledge/general"
+
+[[collections]]
+key = "cooking"
+name = "Cooking"
+path = "~/.local/share/rag-favorite/knowledge/cooking"
+template = "cooking"

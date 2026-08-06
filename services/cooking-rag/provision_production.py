@@ -9,23 +9,25 @@ import psycopg
 from dotenv import dotenv_values
 from psycopg import sql
 
+from product_config import CONFIG
 
-SERVICE_DIR = Path("/home/ubuntu/services/cooking-rag")
-POSTGRES_ENV = Path("/home/ubuntu/services/rag-postgres/.env")
-DATABASE_NAME = "cooking_rag"
+SERVICE_DIR = Path(__file__).resolve().parent
+POSTGRES_ENV = CONFIG.database.credentials_file
+DATABASE_NAME = CONFIG.database.name
+CREDENTIAL_DIR = CONFIG.paths.config_dir / "roles"
 ROLE_FILES = {
-    "cooking_rag_ingest": SERVICE_DIR / "ingest.env",
-    "cooking_rag_writer": SERVICE_DIR / "writer.env",
-    "cooking_rag_runtime": SERVICE_DIR / "runtime.env",
+    "cooking_rag_ingest": CREDENTIAL_DIR / "cooking-ingest.env",
+    "cooking_rag_writer": CREDENTIAL_DIR / "cooking-writer.env",
+    "cooking_rag_runtime": CREDENTIAL_DIR / "cooking-runtime.env",
 }
 
 
 def admin_settings() -> dict[str, str]:
     raw = dotenv_values(POSTGRES_ENV)
     mapping = {
-        "dbname": raw.get("POSTGRES_DB"),
-        "user": raw.get("POSTGRES_USER"),
-        "password": raw.get("POSTGRES_PASSWORD"),
+        "dbname": raw.get("POSTGRES_DB") or raw.get("RAG_DATABASE_NAME") or CONFIG.database.name,
+        "user": raw.get("POSTGRES_USER") or raw.get("RAG_DATABASE_USER") or CONFIG.database.user,
+        "password": raw.get("POSTGRES_PASSWORD") or raw.get("RAG_DATABASE_PASSWORD"),
     }
     if not all(mapping.values()):
         raise RuntimeError("admin settings are incomplete")
@@ -35,8 +37,8 @@ def admin_settings() -> dict[str, str]:
 def admin_connection(*, database: str | None = None) -> psycopg.Connection:
     settings = admin_settings()
     return psycopg.connect(
-        host="127.0.0.1",
-        port=5432,
+        host=CONFIG.database.host,
+        port=CONFIG.database.port,
         dbname=database or settings["dbname"],
         user=settings["user"],
         password=settings["password"],
@@ -82,16 +84,17 @@ def ensure_absent() -> None:
             "SELECT rolname FROM pg_roles WHERE rolname = ANY(%s)",
             (list(role_names),),
         ).fetchall()
-    if database_exists or existing_roles:
-        raise RuntimeError("database or role already exists")
+    if not database_exists:
+        raise RuntimeError("configured rag-favorite database does not exist")
+    if existing_roles:
+        raise RuntimeError("cooking compatibility role already exists")
 
 
 def provision() -> None:
     ensure_absent()
+    CREDENTIAL_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
     passwords = {role: secrets.token_urlsafe(48) for role in ROLE_FILES}
     created_roles: list[str] = []
-    database_created = False
-
     try:
         with admin_connection() as connection:
             for role, password in passwords.items():
@@ -102,13 +105,6 @@ def provision() -> None:
                     ).format(sql.Identifier(role), sql.Literal(password))
                 )
                 created_roles.append(role)
-            connection.execute(
-                sql.SQL("CREATE DATABASE {} TEMPLATE template0 ENCODING 'UTF8'").format(
-                    sql.Identifier(DATABASE_NAME)
-                )
-            )
-            database_created = True
-
         with admin_connection(database=DATABASE_NAME) as connection:
             for migration in (
                 SERVICE_DIR / "migrations/0001-schema.sql",
@@ -116,7 +112,7 @@ def provision() -> None:
             ):
                 connection.execute(migration.read_text(encoding="utf-8"), prepare=False)
 
-        os.chmod(SERVICE_DIR, 0o700)
+        os.chmod(CREDENTIAL_DIR, 0o700)
         for role, path in ROLE_FILES.items():
             write_env_file(path, role, passwords[role])
     except Exception:
@@ -124,12 +120,6 @@ def provision() -> None:
             if path.exists():
                 path.unlink()
         with admin_connection() as connection:
-            if database_created:
-                connection.execute(
-                    sql.SQL("DROP DATABASE {} WITH (FORCE)").format(
-                        sql.Identifier(DATABASE_NAME)
-                    )
-                )
             for role in reversed(created_roles):
                 connection.execute(
                     sql.SQL("DROP ROLE IF EXISTS {}").format(sql.Identifier(role))
@@ -143,7 +133,7 @@ def main() -> int:
     except Exception as exc:
         print(f"PROVISION_FAILED={type(exc).__name__}")
         return 1
-    print("COOKING_DATABASE_CREATED=true")
+    print("COOKING_SCHEMA_INSTALLED=true")
     print("COOKING_ROLES_CREATED=3")
     print("COOKING_CREDENTIAL_FILES=3")
     print("CREDENTIAL_VALUES_PRINTED=false")

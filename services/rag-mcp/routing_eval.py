@@ -224,11 +224,11 @@ def run_test(
     failures = tool_summary.get("failures", 0) or 0
 
     used_rag_search = (
-        "gordon-rag__rag_search" in tools
+        "rag-favorite__rag_search" in tools
     )
 
     used_rag_status = (
-        "gordon-rag__rag_status" in tools
+        "rag-favorite__rag_status" in tools
     )
 
     if bool(test["expect_rag"]):

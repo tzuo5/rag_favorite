@@ -43,26 +43,17 @@ class EightCategoryContractTests(unittest.TestCase):
             "metadata": {"recipe_id": 123},
         }
         with patch.object(
-            rag_mcp_server.COOKING_ADAPTER,
+            rag_mcp_server.TOPIC_ADAPTER,
             "search",
             return_value=[cooking_result],
-        ) as cooking:
-            with patch.object(
-                rag_mcp_server.TOPIC_ADAPTER,
-                "search",
-            ) as topic:
-                result = rag_mcp_server.rag_search(
-                    "红烧肉",
-                    "cooking",
-                    5,
-                )
+        ) as unified:
+            result = rag_mcp_server.rag_search("红烧肉", "cooking", 5)
 
         self.assertTrue(result["ok"])
         self.assertEqual(result["results"], [cooking_result])
         self.assertFalse(result["cross_library"])
         self.assertFalse(result["no_reliable_match"])
-        cooking.assert_called_once_with("红烧肉", ["cooking"], 5)
-        topic.assert_not_called()
+        unified.assert_called_once_with("红烧肉", ["cooking"], 5)
 
     def test_explicit_topic_and_cooking_cross_library_calls_both(self) -> None:
         topic_result = {
@@ -95,21 +86,21 @@ class EightCategoryContractTests(unittest.TestCase):
             "content_hash": None,
             "metadata": {"recipe_id": 1},
         }
+        def unified_results(
+            query: str, collections: list[str], limit: int
+        ) -> list[dict[str, object]]:
+            return [cooking_result] if collections == ["cooking"] else [topic_result]
+
         with patch.object(
             rag_mcp_server.TOPIC_ADAPTER,
             "search",
-            return_value=[topic_result],
-        ) as topic:
-            with patch.object(
-                rag_mcp_server.COOKING_ADAPTER,
-                "search",
-                return_value=[cooking_result],
-            ) as cooking:
-                result = rag_mcp_server.rag_search(
-                    "食物描写",
-                    "cooking",
-                    additional_knowledge_bases=["literature-culture"],
-                )
+            side_effect=unified_results,
+        ) as unified:
+            result = rag_mcp_server.rag_search(
+                "食物描写",
+                "cooking",
+                additional_knowledge_bases=["literature-culture"],
+            )
         self.assertTrue(result["cross_library"])
         self.assertEqual(
             result["knowledge_bases"],
@@ -119,12 +110,11 @@ class EightCategoryContractTests(unittest.TestCase):
             [item["knowledge_base"] for item in result["results"]],
             ["cooking", "literature-culture"],
         )
-        cooking.assert_called_once()
-        topic.assert_called_once()
+        self.assertEqual(unified.call_count, 2)
 
     def test_backend_failure_returns_safe_error_envelope(self) -> None:
         with patch.object(
-            rag_mcp_server.COOKING_ADAPTER,
+            rag_mcp_server.TOPIC_ADAPTER,
             "search",
             side_effect=RuntimeError("/home/ubuntu/secret"),
         ):
