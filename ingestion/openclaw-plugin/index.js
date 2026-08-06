@@ -1,6 +1,8 @@
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseEnv, promisify } from "node:util";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { isStatusIntent } from "./status-intent.js";
@@ -272,8 +274,8 @@ export default definePluginEntry({
   description: "Deterministic Telegram video ingestion bridge",
   register(api) {
     const cfg = api.pluginConfig || {};
-    const python = cfg.python || "/home/ubuntu/AI-Video-Transcriber/.venv/bin/python";
-    const cwd = cfg.projectDir || "/home/ubuntu/AI-Video-Transcriber";
+    const cwd = cfg.projectDir || fileURLToPath(new URL("..", import.meta.url));
+    const python = cfg.python || process.env.RAG_FAVORITE_PYTHON || join(cwd, ".venv", "bin", "python");
     const childEnv = { ...process.env, ...loadProjectEnv(cwd) };
     const pendingBySession = new Map();
     const pendingStartRequests = new Map();

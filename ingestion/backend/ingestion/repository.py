@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 
 import psycopg
-from dotenv import dotenv_values
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
@@ -17,6 +16,8 @@ from .config import Settings
 from .discovery_repository import DiscoveryRepositoryMixin
 from .models import SELECTABLE_DESTINATIONS, Destination, JobState, utc_now
 from .platform_gate import PlatformGateMixin
+from .product_config import product_config
+from rag_favorite.config import ConfigError, read_env_file
 
 
 class JobControlRequested(RuntimeError):
@@ -46,13 +47,33 @@ class SqlRepository(
             with self._connection_factory() as connection:
                 yield connection
             return
-        values = dotenv_values(self.settings.database_env)
+        config = product_config()
+        values = read_env_file(self.settings.database_env)
+        database = (
+            values.get("RAG_DATABASE_NAME")
+            or values.get("PGDATABASE")
+            or values.get("POSTGRES_DB")
+            or config.database.name
+        )
+        user = (
+            values.get("RAG_DATABASE_USER")
+            or values.get("PGUSER")
+            or values.get("POSTGRES_USER")
+            or config.database.user
+        )
+        password = (
+            values.get("RAG_DATABASE_PASSWORD")
+            or values.get("PGPASSWORD")
+            or values.get("POSTGRES_PASSWORD")
+        )
+        if not password:
+            raise ConfigError("Ingestion database credential is incomplete.")
         with psycopg.connect(
-            host="127.0.0.1",
-            port=5432,
-            dbname=values["POSTGRES_DB"],
-            user=values["POSTGRES_USER"],
-            password=values["POSTGRES_PASSWORD"],
+            host=config.database.host,
+            port=config.database.port,
+            dbname=database,
+            user=user,
+            password=password,
             connect_timeout=10,
             row_factory=dict_row,
         ) as connection:

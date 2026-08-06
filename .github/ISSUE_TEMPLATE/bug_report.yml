@@ -1,0 +1,57 @@
+name: Bug report
+description: Report a reproducible problem in rag-favorite
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Please remove credentials, cookies, private documents, and host paths from all output.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: v1.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Setup / CLI
+        - Document RAG
+        - MCP
+        - OpenClaw integration
+        - Media ingestion
+        - Telegram plugin
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Include expected behavior and a minimal reproduction.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: OS, Python, PostgreSQL, Ollama, OpenClaw (if relevant)
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      render: shell
+  - type: checkboxes
+    id: security
+    attributes:
+      label: Security check
+      options:
+        - label: This report does not contain secrets or private data.
+          required: true
+        - label: This is not a vulnerability report; vulnerabilities are reported privately through SECURITY.md.
+          required: true

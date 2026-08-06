@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-favorite"
+version = "1.0.0"
+description = "Local-first document and media RAG with a standard MCP interface"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+authors = [{ name = "rag-favorite contributors" }]
+maintainers = [{ name = "tzuo5" }]
+keywords = ["rag", "mcp", "pgvector", "ollama", "openclaw"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Operating System :: POSIX",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Database",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "pgvector>=0.4,<0.6",
+  "psycopg[binary]>=3.2,<3.4",
+]
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.26,<2", "pydantic>=2.7,<3"]
+ingestion = [
+  "PyYAML>=6.0,<7",
+  "python-dotenv>=1.0,<2",
+]
+dev = [
+  "build>=1.2,<2",
+  "openai>=1.51,<3",
+  "pytest>=8,<10",
+  "ruff>=0.12,<1",
+  "twine>=6,<7",
+  "xhshow>=0.1.9,<0.3",
+  "yt-dlp[default]>=2024.12.13",
+]
+
+[project.urls]
+Homepage = "https://github.com/tzuo5/rag_favorite"
+Documentation = "https://github.com/tzuo5/rag_favorite#readme"
+Issues = "https://github.com/tzuo5/rag_favorite/issues"
+Changelog = "https://github.com/tzuo5/rag_favorite/blob/main/CHANGELOG.md"
+
+[project.scripts]
+rag-favorite = "rag_favorite.cli:main"
+rag-favorite-mcp = "rag_favorite.mcp_server:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+rag_favorite = [
+  "resources/*.yaml",
+  "resources/migrations/*.sql",
+  "resources/systemd/*.service",
+  "resources/systemd/*.timer",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

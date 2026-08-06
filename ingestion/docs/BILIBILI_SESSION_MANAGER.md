@@ -8,9 +8,9 @@ cookie file with mode `0600`.
 Set:
 
 ```dotenv
-BILIBILI_COOKIES_FILE=/home/ubuntu/AI-Video-Transcriber/secrets/www.bilibili.com_cookies.txt
+BILIBILI_COOKIES_FILE=~/.config/rag-favorite/bilibili-cookies.txt
 BILIBILI_SESSION_ENABLED=true
-BILIBILI_SESSION_ROOT=/home/ubuntu/.local/share/bilibili-session
+BILIBILI_SESSION_ROOT=~/.local/share/rag-favorite/sessions/bilibili
 BILIBILI_LOGIN_TIMEOUT_SECONDS=180
 BILIBILI_QR_TTL_SECONDS=180
 BILIBILI_AUTO_RESUME=true

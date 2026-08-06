@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-SESSION_DIR = Path("/home/ubuntu/.openclaw/agents/main/sessions")
+SESSION_DIR = Path(
+    os.environ.get(
+        "OPENCLAW_SESSION_DIR",
+        str(Path.home() / ".openclaw" / "agents" / "main" / "sessions"),
+    )
+)
 
 
 def parse_timestamp(value: str) -> datetime:
@@ -89,7 +95,7 @@ def _count_call(
     arguments: dict[str, Any],
 ) -> None:
     counts["all_tool_calls"] += 1
-    if tool_name == "gordon-rag__rag_search":
+    if tool_name == "rag-favorite__rag_search":
         counts["unified_search_calls"] += 1
         primary = arguments.get("knowledge_base")
         extras = arguments.get("additional_knowledge_bases")
@@ -124,7 +130,7 @@ def _count_result(
     structured = details.get("structuredContent")
     if not isinstance(structured, dict):
         return
-    if call["tool"] == "gordon-rag__rag_search":
+    if call["tool"] == "rag-favorite__rag_search":
         if structured.get("ok") is False:
             counts["unified_search_errors"] += 1
         if structured.get("no_reliable_match") is True:

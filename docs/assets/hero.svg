@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title description">
+  <title id="title">rag-favorite</title>
+  <description id="description">A local-first pipeline from media and documents to searchable knowledge.</description>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071426"/>
+      <stop offset="0.48" stop-color="#10294a"/>
+      <stop offset="1" stop-color="#173f4f"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#62d9ff"/>
+      <stop offset="1" stop-color="#74f0b3"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" rx="28" fill="url(#background)"/>
+  <circle cx="1060" cy="50" r="165" fill="#2877a8" opacity=".18" filter="url(#glow)"/>
+  <circle cx="80" cy="390" r="150" fill="#28a880" opacity=".14" filter="url(#glow)"/>
+
+  <g transform="translate(82 68)">
+    <rect width="82" height="82" rx="22" fill="url(#accent)"/>
+    <path d="M23 24h27c13 0 21 7 21 18 0 8-4 14-11 17l12 18H58L48 61H36v16H23V24zm13 11v15h13c6 0 9-3 9-8 0-4-3-7-9-7H36z" fill="#071426"/>
+    <circle cx="71" cy="18" r="7" fill="#fff" opacity=".9"/>
+  </g>
+
+  <text x="190" y="116" fill="#f6fbff" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="62" font-weight="750" letter-spacing="-2">rag-favorite</text>
+  <text x="84" y="202" fill="#c9d9e7" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="26">Turn documents and media into private, searchable knowledge.</text>
+  <text x="84" y="239" fill="#87a5bc" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="18">Local-first · PostgreSQL + pgvector · Ollama · MCP · Optional OpenClaw</text>
+
+  <g transform="translate(84 294)" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="600">
+    <rect width="154" height="48" rx="24" fill="#163657" stroke="#3979a6"/>
+    <text x="77" y="30" fill="#d9efff" text-anchor="middle">Documents</text>
+    <path d="M166 24h46" stroke="#58bde5" stroke-width="2"/>
+    <path d="m206 18 8 6-8 6" fill="none" stroke="#58bde5" stroke-width="2"/>
+    <rect x="226" width="154" height="48" rx="24" fill="#163f54" stroke="#3c8c9e"/>
+    <text x="303" y="30" fill="#dcf8ff" text-anchor="middle">Ingest</text>
+    <path d="M392 24h46" stroke="#5bcfd0" stroke-width="2"/>
+    <path d="m432 18 8 6-8 6" fill="none" stroke="#5bcfd0" stroke-width="2"/>
+    <rect x="452" width="154" height="48" rx="24" fill="#164a4c" stroke="#42a98a"/>
+    <text x="529" y="30" fill="#ddfff2" text-anchor="middle">Index</text>
+    <path d="M618 24h46" stroke="#67d8af" stroke-width="2"/>
+    <path d="m658 18 8 6-8 6" fill="none" stroke="#67d8af" stroke-width="2"/>
+    <rect x="678" width="154" height="48" rx="24" fill="#185040" stroke="#50b97c"/>
+    <text x="755" y="30" fill="#e2ffed" text-anchor="middle">Retrieve</text>
+    <path d="M844 24h46" stroke="#6ad99b" stroke-width="2"/>
+    <path d="m884 18 8 6-8 6" fill="none" stroke="#6ad99b" stroke-width="2"/>
+    <rect x="904" width="154" height="48" rx="24" fill="#1c5544" stroke="#65c68b"/>
+    <text x="981" y="30" fill="#e7fff0" text-anchor="middle">Your agents</text>
+  </g>
+</svg>

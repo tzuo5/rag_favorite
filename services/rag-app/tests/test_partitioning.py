@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -12,36 +13,24 @@ import rag  # noqa: E402
 
 
 class KnowledgeBasePartitioningTests(unittest.TestCase):
-    def test_configured_topic_roots_share_the_knowledge_directory(self) -> None:
+    def test_default_roots_use_portable_product_data_directory(self) -> None:
+        expected = Path.home() / ".local/share/rag-favorite/knowledge"
+        self.assertEqual(rag.KNOWLEDGE_BASES["tech"].root, expected / "tech")
         self.assertEqual(
-            rag.KNOWLEDGE_BASES["thought-politics"].root,
-            Path("/home/ubuntu/知识库/Thought and Politics"),
-        )
-        self.assertEqual(
-            rag.KNOWLEDGE_BASES["tech"].root,
-            Path("/home/ubuntu/知识库/Technology"),
-        )
-        self.assertEqual(
-            rag.KNOWLEDGE_BASES["social-conduct"].root,
-            Path("/home/ubuntu/知识库/Chinese Social Relations and Conduct"),
+            rag.KNOWLEDGE_BASES["cooking"].root,
+            expected / "cooking",
         )
 
     def test_path_within_root_accepts_selected_root(self) -> None:
-        result = rag.path_within_root(
-            Path("/home/ubuntu/知识库/Technology/1. Programming and Software/example.md"),
-            Path("/home/ubuntu/知识库/Technology"),
-        )
-        self.assertEqual(
-            result,
-            Path("/home/ubuntu/知识库/Technology/1. Programming and Software/example.md"),
-        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "example.md"
+            path.write_text("example", encoding="utf-8")
+            self.assertEqual(rag.path_within_root(path, root), path.resolve())
 
     def test_path_within_root_rejects_directory_traversal(self) -> None:
         with self.assertRaises(RuntimeError):
-            rag.path_within_root(
-                Path("/home/ubuntu/知识库/Technology/../Thought and Politics/file.md"),
-                Path("/home/ubuntu/知识库/Technology"),
-            )
+            rag.path_within_root(Path("/tmp/outside.md"), Path("/tmp/inside"))
 
     def test_search_requires_an_explicit_knowledge_base(self) -> None:
         parser = rag.create_parser()
@@ -60,7 +49,7 @@ class KnowledgeBasePartitioningTests(unittest.TestCase):
                 "finance",
             ]
         )
-        self.assertEqual(arguments.knowledge_base, ["tech", "finance"])
+        self.assertEqual(arguments.collections, ["tech", "finance"])
 
 
 if __name__ == "__main__":

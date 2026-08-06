@@ -20,7 +20,7 @@ TESTS: list[dict[str, Any]] = [
     {
         "name": "current-runtime-model",
         "expected_tools": {
-            "gordon-rag__rag_status",
+            "rag-favorite__rag_status",
         },
         "prompt": (
             "检查我的 RAG 服务当前实际使用的 embedding 模型"
@@ -30,7 +30,7 @@ TESTS: list[dict[str, Any]] = [
     {
         "name": "documented-server-model",
         "expected_tools": {
-            "gordon-rag__rag_search",
+            "rag-favorite__rag_search",
         },
         "prompt": (
             "我之前保存的服务器项目文档里记录了哪个 "
@@ -40,7 +40,7 @@ TESTS: list[dict[str, Any]] = [
     {
         "name": "investment-single-source",
         "expected_tools": {
-            "gordon-rag__rag_search",
+            "rag-favorite__rag_search",
         },
         "prompt": (
             "我之前记录的长期投资重点是什么？"
@@ -49,7 +49,7 @@ TESTS: list[dict[str, Any]] = [
     {
         "name": "cpp-single-source",
         "expected_tools": {
-            "gordon-rag__rag_search",
+            "rag-favorite__rag_search",
         },
         "prompt": (
             "我之前学 C++ 时主要记录了哪些算法主题？"

@@ -7,9 +7,9 @@ from pathlib import Path
 
 from embedding import OllamaEmbeddingClient
 from repository import RecipeIndexer, RecipeRetriever
+from product_config import CONFIG
 
-
-DEFAULT_VAULT = Path("/home/ubuntu/知识库/Cooking")
+DEFAULT_VAULT = CONFIG.collection("cooking").path
 
 
 def build_parser() -> argparse.ArgumentParser:

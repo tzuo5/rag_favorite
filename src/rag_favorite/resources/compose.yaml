@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.2-pg16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${RAG_DATABASE_NAME}"
+      POSTGRES_USER: "${RAG_DATABASE_USER}"
+      POSTGRES_PASSWORD: "${RAG_DATABASE_PASSWORD}"
+    ports:
+      - "127.0.0.1:${RAG_DATABASE_PORT}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  ollama:
+    image: ollama/ollama:0.32.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${RAG_OLLAMA_PORT}:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+
+volumes:
+  postgres-data:
+  ollama-models:

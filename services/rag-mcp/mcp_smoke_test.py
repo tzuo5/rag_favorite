@@ -7,7 +7,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 
-BASE_DIR = Path("/home/ubuntu/services/rag-mcp")
+BASE_DIR = Path(__file__).resolve().parent
 SERVER_PYTHON = BASE_DIR / ".venv" / "bin" / "python"
 SERVER_SCRIPT = BASE_DIR / "rag_mcp_server.py"
 

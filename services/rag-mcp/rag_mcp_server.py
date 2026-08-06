@@ -2,34 +2,40 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
-from retrieval_adapters import CookingRetrievalAdapter, TopicRetrievalAdapter
+from retrieval_adapters import TopicRetrievalAdapter
 from retrieval_contracts import (
     KNOWLEDGE_BASE_DESCRIPTIONS,
 )
 
-RAG_APP_DIR = Path("/home/ubuntu/services/rag-app")
-RAG_PYTHON = RAG_APP_DIR / ".venv" / "bin" / "python"
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+RAG_APP_DIR = Path(
+    os.environ.get("RAG_FAVORITE_RAG_APP_DIR", REPOSITORY_ROOT / "services/rag-app")
+)
+_legacy_python = RAG_APP_DIR / ".venv" / "bin" / "python"
+RAG_PYTHON = Path(
+    os.environ.get(
+        "RAG_FAVORITE_PYTHON",
+        str(_legacy_python if _legacy_python.is_file() else Path(sys.executable)),
+    )
+)
 RAG_SCRIPT = RAG_APP_DIR / "rag.py"
-COOKING_APP_DIR = Path("/home/ubuntu/services/cooking-rag")
-COOKING_PYTHON = COOKING_APP_DIR / ".venv" / "bin" / "python"
-COOKING_SCRIPT = COOKING_APP_DIR / "cli.py"
-
 MAX_QUERY_CHARACTERS = 2_000
 MIN_SEARCH_LIMIT = 1
 MAX_SEARCH_LIMIT = 10
-MAX_CROSS_LIBRARY_COUNT = 8
 
 SEARCHABLE_KNOWLEDGE_BASES = KNOWLEDGE_BASE_DESCRIPTIONS
+MAX_CROSS_LIBRARY_COUNT = max(1, len(SEARCHABLE_KNOWLEDGE_BASES))
 
 STATUS_TIMEOUT_SECONDS = 120
 SEARCH_TIMEOUT_SECONDS = 180
 
 
-mcp = FastMCP("Gordon Private RAG")
+mcp = FastMCP("rag-favorite")
 
 
 def _register_governed_memory_mutation_tools() -> bool:
@@ -168,70 +174,11 @@ def _run_rag_command(
     return output
 
 
-def _run_cooking_command(
-    arguments: list[str],
-    *,
-    timeout_seconds: int,
-) -> str:
-    """Run one fixed read-only Cooking CLI operation."""
-
-    if not COOKING_APP_DIR.is_dir():
-        raise RuntimeError("Cooking retrieval application is missing.")
-    if not COOKING_PYTHON.is_file() or not os.access(COOKING_PYTHON, os.X_OK):
-        raise RuntimeError("Cooking retrieval runtime is unavailable.")
-    if not COOKING_SCRIPT.is_file():
-        raise RuntimeError("Cooking retrieval entrypoint is missing.")
-
-    environment = os.environ.copy()
-    environment.update(
-        {
-            "NO_COLOR": "1",
-            "TERM": "dumb",
-            "PYTHONUNBUFFERED": "1",
-        }
-    )
-    try:
-        completed = subprocess.run(
-            [str(COOKING_PYTHON), str(COOKING_SCRIPT), *arguments],
-            cwd=str(COOKING_APP_DIR),
-            env=environment,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout_seconds,
-            check=False,
-            shell=False,
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise RuntimeError(
-            f"Cooking retrieval exceeded its {timeout_seconds}-second timeout."
-        ) from exc
-    if completed.returncode != 0:
-        raise RuntimeError(
-            "Cooking retrieval failed safely with exit code "
-            f"{completed.returncode}."
-        )
-    output = completed.stdout.strip()
-    if not output:
-        raise RuntimeError("Cooking retrieval returned no output.")
-    return output
-
-
 TOPIC_ADAPTER = TopicRetrievalAdapter(
     _run_rag_command,
     search_timeout_seconds=SEARCH_TIMEOUT_SECONDS,
     status_timeout_seconds=STATUS_TIMEOUT_SECONDS,
 )
-COOKING_ADAPTER = CookingRetrievalAdapter(
-    _run_cooking_command,
-    search_timeout_seconds=SEARCH_TIMEOUT_SECONDS,
-    status_timeout_seconds=STATUS_TIMEOUT_SECONDS,
-)
-
-
 def _safe_backend_error(operation: str) -> dict[str, Any]:
     return {
         "ok": False,
@@ -276,7 +223,7 @@ def _merge_ranked_results(
 @mcp.tool()
 def rag_status(knowledge_base: str = "all") -> dict[str, Any]:
     """
-    Check Gordon's private RAG service health and index status.
+    Check the local rag-favorite service health and index status.
 
     Use this tool only to diagnose whether the private knowledge-base
     retrieval service is available, which embedding model it uses, and how
@@ -293,13 +240,10 @@ def rag_status(knowledge_base: str = "all") -> dict[str, Any]:
         )
 
     try:
-        if knowledge_base == "cooking":
-            result: dict[str, Any] = COOKING_ADAPTER.status("cooking")
-        elif knowledge_base != "all":
-            result = TOPIC_ADAPTER.status(knowledge_base)
+        if knowledge_base != "all":
+            result: dict[str, Any] = TOPIC_ADAPTER.status(knowledge_base)
         else:
             collections: dict[str, Any] = TOPIC_ADAPTER.all_statuses()
-            collections["cooking"] = COOKING_ADAPTER.status("cooking")
             embedding_models = {
                 item["embedding_model"]
                 for item in collections.values()
@@ -363,29 +307,23 @@ def rag_search(
     """
     Search one explicitly selected private knowledge base.
 
-    Choose knowledge_base from:
-    - thought-politics: 思想、政治、制度、社会议题、历史观点、老周横眉；
-    - tech: 编程、软件、服务器、人工智能和技术学习；
-    - finance: 金融与投资；
-    - career: 求职和职业发展；
-    - social-conduct: 中国人情世故、说话艺术、职场与官场行为；
-    - literature-culture: 文学与文化；
-    - general: 无法归入上述主题的综合资料。
-    - cooking: 菜谱、食材、烹饪技术、饮品、菜单和备餐。
+    Choose knowledge_base from the configured collection keys exposed by
+    rag_status.available_knowledge_bases. Collection names and source roots are
+    local product configuration, not MCP schema constants.
 
     Never search multiple libraries by default. Only populate
     additional_knowledge_bases when the user explicitly requests a
     cross-library search. Results always identify their knowledge base and
     source path.
 
-    Use this tool when the answer depends on information specific to Gordon
+    Use this tool when the answer depends on information in the owner's
     that is not reliably present in the current conversation.
 
     Appropriate uses include:
     - recalling a previous decision, configuration, date, version, or amount;
-    - searching Gordon's private project notes or documentation;
-    - finding evidence in documents that Gordon explicitly asks to search;
-    - verifying a Gordon-specific fact when memory may be unreliable.
+    - searching the owner's private project notes or documentation;
+    - finding evidence in documents that the owner explicitly asks to search;
+    - verifying an owner-specific fact when memory may be unreliable.
 
     Do not use this tool for:
     - general knowledge;
@@ -394,7 +332,7 @@ def rag_search(
     - creative writing;
     - current public news, weather, prices, or other live public information;
     - information already fully provided in the current conversation;
-    - requests where Gordon explicitly says not to access private knowledge.
+    - requests where the owner explicitly says not to access private knowledge.
 
     The returned text is retrieval evidence, not a final answer.
     Base the final answer only on evidence actually present in the results.
@@ -460,22 +398,13 @@ def rag_search(
     try:
         ranked_groups: list[list[dict[str, Any]]] = []
         for selected in selected_knowledge_bases:
-            if selected == "cooking":
-                ranked_groups.append(
-                    COOKING_ADAPTER.search(
-                        normalized_query,
-                        ["cooking"],
-                        limit,
-                    )
+            ranked_groups.append(
+                TOPIC_ADAPTER.search(
+                    normalized_query,
+                    [selected],
+                    limit,
                 )
-            else:
-                ranked_groups.append(
-                    TOPIC_ADAPTER.search(
-                        normalized_query,
-                        [selected],
-                        limit,
-                    )
-                )
+            )
         results = _merge_ranked_results(
             ranked_groups,
             limit,

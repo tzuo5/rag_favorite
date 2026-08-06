@@ -491,7 +491,7 @@ class VideoIngestionService:
             self._notify_job(job, "progress", chat_id, "♻️ 已发现相同媒体，正在复用已有转录结果…")
             await self._reuse_duplicate(job, metadata, duplicate)
             self.cleanup.cleanup_media(job_dir)
-            inbound_root = Path("/home/ubuntu/.openclaw/media/inbound").resolve()
+            inbound_root = (self.settings.openclaw_media_root / "inbound").resolve()
             if source.is_relative_to(inbound_root):
                 source.unlink(missing_ok=True)
             return
@@ -501,15 +501,22 @@ class VideoIngestionService:
         self._ensure_batch_can_continue(job)
         self._notify_job(job, "progress", chat_id, "✅ 语音转写完成")
         await self._stage(job, job_dir, metadata, transcript, media_hash)
-        inbound_root = Path("/home/ubuntu/.openclaw/media/inbound").resolve()
+        inbound_root = (self.settings.openclaw_media_root / "inbound").resolve()
         if source.is_relative_to(inbound_root):
             source.unlink(missing_ok=True)
 
     def _resolve_media_path(self, value: str) -> Path:
         if value.startswith("media://inbound/"):
-            value = str(Path("/home/ubuntu/.openclaw/media/inbound") / value.rsplit("/", 1)[-1])
+            value = str(
+                self.settings.openclaw_media_root
+                / "inbound"
+                / value.rsplit("/", 1)[-1]
+            )
         path = Path(value).expanduser().resolve(strict=True)
-        allowed = [Path("/home/ubuntu/.openclaw/media"), Path("/home/ubuntu/AI-Video-Transcriber/test-fixtures")]
+        allowed = [
+            self.settings.openclaw_media_root,
+            self.settings.test_fixture_root,
+        ]
         if not any(path.is_relative_to(root.resolve()) for root in allowed):
             raise ValueError("媒体文件不在允许目录")
         return path

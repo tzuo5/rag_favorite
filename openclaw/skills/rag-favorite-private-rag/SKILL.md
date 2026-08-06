@@ -1,10 +1,10 @@
 ---
-name: gordon-private-rag
-description: Route Gordon-specific private-knowledge questions to one explicitly selected category in the unified eight-category RAG, including cooking.
+name: rag-favorite-private-rag
+description: Route the owner-specific private-knowledge questions to one explicitly selected category in the unified eight-category RAG, including cooking.
 user-invocable: false
 ---
 
-# Gordon Unified Knowledge RAG Routing
+# the owner Unified Knowledge RAG Routing
 
 Use the private RAG tools selectively. Do not retrieve on every turn.
 
@@ -13,20 +13,20 @@ Use the private RAG tools selectively. Do not retrieve on every turn.
 Follow this order before calling any retrieval tool:
 
 1. If the current conversation already contains enough information, answer directly.
-2. If the answer depends on Gordon-specific historical information, saved
+2. If the answer depends on the owner-specific historical information, saved
    recipes, project documentation, notes, contracts, configurations, prior
    decisions, dates, versions, paths, amounts, or plans, call
-   `gordon-rag__rag_search` with the one best-matching category.
+   `rag-favorite__rag_search` with the one best-matching category.
 3. Treat `cooking` as an equal category, not a higher-priority retrieval system.
 4. If the question concerns general knowledge or current public information, use normal knowledge or the appropriate public-information tool instead.
 5. If the user explicitly says not to access private knowledge, do not call the private RAG tools.
 
-## Use `gordon-rag__rag_search` when
+## Use `rag-favorite__rag_search` when
 
-- The user asks what Gordon previously decided, configured, documented, studied, purchased, planned, or recorded.
+- The user asks what the owner previously decided, configured, documented, studied, purchased, planned, or recorded.
 - The user refers to private notes, project files, contracts, server documentation, investment notes, or historical personal facts.
 - The user asks to search the private knowledge base, notes, documents, or RAG.
-- A Gordon-specific fact requires verification and is not reliably present in the current conversation.
+- A the owner-specific fact requires verification and is not reliably present in the current conversation.
 - Accurate evidence such as a file name, path, version, amount, or date is required.
 
 ## Do not use private RAG for
@@ -38,11 +38,11 @@ Follow this order before calling any retrieval tool:
 - Questions fully answered by the current conversation.
 - Requests where the user forbids private-knowledge access.
 - Creating a recipe or retrieving the full body and images of a selected
-  recipe; those operations use `gordon-cooking-rag` after unified search.
+  recipe; those operations use `rag-favorite-cooking-rag` after unified search.
 
 ## Tool boundaries
 
-### `gordon-rag__rag_search`
+### `rag-favorite__rag_search`
 
 Use this to search evidence through one unified retrieval interface. Always
 pass exactly one `knowledge_base` on the first call:
@@ -57,7 +57,7 @@ pass exactly one `knowledge_base` on the first call:
 - `cooking`: 菜谱、食材、烹饪技术、饮品、菜单、购物清单与备餐。
 
 Infer the single best collection from the user's question. Never populate
-`additional_knowledge_bases` unless Gordon explicitly asks for a cross-library
+`additional_knowledge_bases` unless the owner explicitly asks for a cross-library
 search. Cross-library results must retain their knowledge-base and source-path
 labels.
 
@@ -70,13 +70,13 @@ Choose a focused search query that preserves important names, dates, products, p
 Normally use a limit of 3. Increase it only when the question needs evidence from multiple documents.
 
 Governed durable memory remains a separate store. Keep
-`include_governed_memory=false` unless Gordon explicitly asks to search both
+`include_governed_memory=false` unless the owner explicitly asks to search both
 documents and governed memory.
 
-### `gordon-rag__rag_status`
+### `rag-favorite__rag_status`
 
 Use this only for health checks and diagnostics of the RAG system. Pass one
-`knowledge_base` for a category-specific status, or `all` only when Gordon asks
+`knowledge_base` for a category-specific status, or `all` only when the owner asks
 for the overall index status.
 
 Do not call `rag_status` merely to answer a knowledge question.
@@ -105,15 +105,15 @@ Use only one retrieval source initially.
 
 ### Prefer private RAG
 
-For questions about Gordon's saved projects, notes, configurations,
+For questions about the owner's saved projects, notes, configurations,
 investment records, study records, contracts, or other ingested
 documents:
 
-1. Call `gordon-rag__rag_search` first.
+1. Call `rag-favorite__rag_search` first.
 2. If it returns direct relevant evidence, stop retrieving and answer.
 3. Do not also call `memory_search`.
 4. Do not call `read` merely to re-read content already returned by
-   `gordon-rag__rag_search`.
+   `rag-favorite__rag_search`.
 
 ### Prefer native memory
 
@@ -132,13 +132,13 @@ same broad query across both systems.
 
 ### Status versus knowledge
 
-Use `gordon-rag__rag_status` for current operational state, such as:
+Use `rag-favorite__rag_status` for current operational state, such as:
 
 - whether the RAG service is healthy;
 - the model and vector dimensions currently reported by the service;
 - the current indexed document and chunk counts.
 
-Use `gordon-rag__rag_search` for what saved documents record, including
+Use `rag-favorite__rag_search` for what saved documents record, including
 historical configurations, decisions, project details, notes, and plans.
 
 When the wording says "currently running", "current status", "healthy",

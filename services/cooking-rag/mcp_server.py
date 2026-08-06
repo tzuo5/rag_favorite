@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Literal
 
@@ -11,17 +12,28 @@ from recipe_documents import resolve_recipe_images, stage_recipe_images
 from recipe_writer import RecipeCreateError, RecipeWriter
 from repository import RecipeIndexer, RecipeRetriever
 from validators import normalize_query
+from product_config import CONFIG
 
 
 MAX_RESULTS = 10
 
-mcp = FastMCP("Gordon Cooking RAG")
+mcp = FastMCP("rag-favorite Cooking")
 embedding_client = OllamaEmbeddingClient()
 retriever = RecipeRetriever(embedding_client)
 
-WRITER_ENV_FILE = Path("/home/ubuntu/services/cooking-rag/writer.env")
-COOKING_VAULT = Path("/home/ubuntu/知识库/Cooking")
-OPENCLAW_RECIPE_MEDIA = Path("/home/ubuntu/.openclaw/media/outbound/cooking-rag")
+WRITER_ENV_FILE = Path(
+    os.environ.get(
+        "RAG_FAVORITE_COOKING_WRITER_ENV",
+        str(CONFIG.database.credentials_file),
+    )
+)
+COOKING_VAULT = CONFIG.collection("cooking").path
+OPENCLAW_RECIPE_MEDIA = Path(
+    os.environ.get(
+        "RAG_FAVORITE_RECIPE_MEDIA_DIR",
+        str(Path.home() / ".openclaw" / "media" / "outbound" / "rag-favorite"),
+    )
+)
 
 
 def _build_writer() -> RecipeWriter | None:
@@ -45,7 +57,7 @@ writer = _build_writer()
 
 @mcp.tool()
 def cooking_recipe_search(query: str, limit: int = 5) -> dict[str, Any]:
-    """Search Gordon's isolated private cooking and recipe knowledge base.
+    """Search the owner's private cooking and recipe collection.
 
     Use only for recipes, ingredients, quantities, cooking techniques, drinks,
     shopping lists, preparation timelines, substitutions, or menu planning.
