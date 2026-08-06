@@ -78,3 +78,74 @@ jobs:
           name: rag-favorite-dist
           path: dist/
           if-no-files-found: error
+
+  macos:
+    name: macOS / ${{ matrix.architecture }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: arm64
+            runner: macos-15
+            uv_target: aarch64-apple-darwin
+            uv_sha256: 2b25be1af546be330b340b0a76b99f989daa6d92678fdffb87438e661e9d88fb
+          - architecture: x86_64
+            runner: macos-15-intel
+            uv_target: x86_64-apple-darwin
+            uv_sha256: 6b91ae3de155f51bd1f5b74814821c79f016a176561f252cd9ddfb976939af2e
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Build wheel
+        run: |
+          python -m pip install "build>=1.2,<2"
+          python -m build --wheel
+      - name: Fetch reviewed uv bootstrap
+        env:
+          UV_TARGET: ${{ matrix.uv_target }}
+          UV_SHA256: ${{ matrix.uv_sha256 }}
+        run: |
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "uv-${UV_TARGET}.tar.gz" \
+            "https://github.com/astral-sh/uv/releases/download/0.11.16/uv-${UV_TARGET}.tar.gz"
+          echo "${UV_SHA256}  uv-${UV_TARGET}.tar.gz" | shasum -a 256 -c -
+      - name: Build macOS archive
+        env:
+          ARCHITECTURE: ${{ matrix.architecture }}
+          UV_TARGET: ${{ matrix.uv_target }}
+        run: |
+          python scripts/build_macos_bundle.py \
+            --wheel "dist/rag_favorite-1.2.0-py3-none-any.whl" \
+            --uv-archive "uv-${UV_TARGET}.tar.gz" \
+            --architecture "${ARCHITECTURE}" \
+            --output dist-macos
+      - name: Install and smoke test
+        env:
+          ARCHITECTURE: ${{ matrix.architecture }}
+          TEST_HOME: ${{ runner.temp }}/rag-favorite-home
+          TEST_PREFIX: ${{ runner.temp }}/Application Support/rag-favorite-cli
+          TEST_BIN: ${{ runner.temp }}/Local Bin
+        run: |
+          mkdir -p "${TEST_HOME}"
+          tar -xzf "dist-macos/rag-favorite-1.2.0-macos-${ARCHITECTURE}.tar.gz" -C "${RUNNER_TEMP}"
+          bundle="${RUNNER_TEMP}/rag-favorite-1.2.0-macos-${ARCHITECTURE}"
+          HOME="${TEST_HOME}" "${bundle}/install.command" \
+            --yes --prefix "${TEST_PREFIX}" --bin-dir "${TEST_BIN}"
+          HOME="${TEST_HOME}" "${TEST_BIN}/rag-favorite" --version
+          HOME="${TEST_HOME}" "${TEST_BIN}/rag-favorite" config validate
+          HOME="${TEST_HOME}" "${TEST_BIN}/rag-favorite" ingestion detect \
+            --project-dir "${TEST_PREFIX}/ingestion" --json
+          for plist in "${TEST_HOME}/Library/LaunchAgents/"*.plist; do
+            plutil -lint "${plist}"
+          done
+          HOME="${TEST_HOME}" "${bundle}/uninstall.command" \
+            --yes --prefix "${TEST_PREFIX}" --bin-dir "${TEST_BIN}"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rag-favorite-macos-${{ matrix.architecture }}
+          path: dist-macos/
+          if-no-files-found: error

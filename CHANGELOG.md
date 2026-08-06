@@ -3,6 +3,32 @@
 All notable changes to this project are documented here. The project follows
 [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-08-06
+
+### Added
+
+- Downloadable macOS release archives for Apple Silicon and Intel, each built
+  and installation-tested on its matching GitHub-hosted Mac runner.
+- A checksummed, architecture-guarded installer with a bundled reviewed `uv`
+  bootstrap, isolated Python 3.12 environment, complete ingestion dependencies,
+  Chromium provisioning, CLI/MCP/web launchers, and data-preserving uninstaller.
+- Native per-user `launchd` rendering and lifecycle support for ingestion,
+  discovery, notification, cleanup, Xiaohongshu, and Bilibili jobs.
+- macOS launchd recovery paths for Bilibili and Xiaohongshu session refreshes,
+  including a direct Playwright probe without Linux-only Xvfb.
+- macOS installation, Gatekeeper, external-service, verification, upgrade, and
+  removal documentation.
+
+### Security
+
+- macOS bundles verify every embedded payload before installation and publish
+  separate SHA-256 checksum assets.
+- Install and uninstall scripts reject broad target paths, avoid replacing
+  unmanaged command files, keep user services unprivileged, and preserve data
+  unless `--purge-data` is explicitly requested.
+- The pinned macOS `uv` 0.11.16 binaries are verified against upstream release
+  digests before packaging.
+
 ## [1.1.0] - 2026-08-06
 
 ### Added
@@ -55,3 +81,4 @@ First stable local-first release.
 
 [1.0.0]: https://github.com/tzuo5/rag_favorite/releases/tag/v1.0.0
 [1.1.0]: https://github.com/tzuo5/rag_favorite/releases/tag/v1.1.0
+[1.2.0]: https://github.com/tzuo5/rag_favorite/releases/tag/v1.2.0

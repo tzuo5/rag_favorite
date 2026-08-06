@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: help install-dev lint test test-core test-ingestion test-compat test-node compile build check clean
+.PHONY: help install-dev lint test test-core test-ingestion test-compat test-node test-macos compile build check clean
 
 help:
 	@echo "install-dev     Install editable development dependencies"
@@ -13,7 +13,7 @@ install-dev:
 	$(PYTHON) -m pip install -e ".[mcp,ingestion,dev]"
 
 lint:
-	$(PYTHON) -m ruff check src/rag_favorite tests
+	$(PYTHON) -m ruff check src/rag_favorite tests scripts
 
 test-core:
 	PYTHONPATH=src $(PYTHON) -m pytest -q tests services/rag-app/tests
@@ -28,10 +28,14 @@ test-compat:
 test-node:
 	node --test ingestion/openclaw-plugin/*.test.js
 
-test: test-core test-ingestion test-compat test-node
+test-macos:
+	bash -n packaging/macos/install.command
+	bash -n packaging/macos/uninstall.command
+
+test: test-core test-ingestion test-compat test-node test-macos
 
 compile:
-	$(PYTHON) -m compileall -q src ingestion/backend services
+	$(PYTHON) -m compileall -q src ingestion/backend services scripts
 
 build:
 	$(PYTHON) -m build

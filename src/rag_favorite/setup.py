@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+import plistlib
+import shlex
 import shutil
 import subprocess
 import time
@@ -43,6 +45,47 @@ DEFAULT_ENABLED_UNITS = (
     "video-ingestion-cleanup.timer",
     "video-ingestion-worker.service",
 )
+LAUNCHD_JOBS = (
+    {
+        "label": "com.rag-favorite.video-ingestion-worker",
+        "arguments": ("-m", "backend.ingestion.cli", "worker"),
+        "run_at_load": True,
+        "keep_alive_on_failure": True,
+        "throttle_interval": 10,
+    },
+    {
+        "label": "com.rag-favorite.video-author-discovery-worker",
+        "arguments": ("-m", "backend.ingestion.cli", "discovery-worker"),
+        "run_at_load": True,
+        "keep_alive_on_failure": True,
+        "throttle_interval": 10,
+    },
+    {
+        "label": "com.rag-favorite.video-batch-notification-worker",
+        "arguments": ("-m", "backend.ingestion.cli", "batch-notification-worker"),
+        "run_at_load": True,
+        "keep_alive_on_failure": True,
+        "throttle_interval": 5,
+    },
+    {
+        "label": "com.rag-favorite.video-ingestion-cleanup",
+        "arguments": ("-m", "backend.ingestion.cli", "cleanup"),
+        "run_at_load": False,
+        "start_interval": 3600,
+    },
+    {
+        "label": "com.rag-favorite.xhs-session-manager",
+        "arguments": ("-m", "backend.xhs_session.cli", "refresh"),
+        "run_at_load": False,
+        "start_interval": 21600,
+    },
+    {
+        "label": "com.rag-favorite.bilibili-session-manager",
+        "arguments": ("-m", "backend.bilibili_session.cli", "login"),
+        "run_at_load": False,
+    },
+)
+LAUNCHD_LABELS = tuple(str(job["label"]) for job in LAUNCHD_JOBS)
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,9 +102,11 @@ class SetupOptions:
     migrate_database: bool = True
     pull_model: bool = False
     render_systemd: bool = False
+    render_launchd: bool = False
     enable_services: bool = False
     ingestion_dir: Path | None = None
     systemd_dir: Path | None = None
+    launchd_dir: Path | None = None
     openclaw_env: Path | None = None
     openclaw_media_dir: Path | None = None
     wait_seconds: int = 60
@@ -99,6 +144,7 @@ class SetupManager:
         self._database_connector = database_connector
 
     def plan(self, options: SetupOptions) -> tuple[SetupCheck, ...]:
+        self._validate_service_options(options)
         checks = [
             SetupCheck(
                 "configuration",
@@ -142,13 +188,20 @@ class SetupManager:
                     str(self._systemd_dir(options)),
                 )
             )
+        if options.render_launchd:
+            checks.append(
+                SetupCheck(
+                    "user-launchd",
+                    "render-and-enable" if options.enable_services else "render",
+                    str(self._launchd_dir(options)),
+                )
+            )
         return tuple(checks)
 
     def apply(self, options: SetupOptions) -> tuple[SetupCheck, ...]:
         if options.pull_model and not options.start_services:
             raise ConfigError("--pull-model requires --start-services.")
-        if options.enable_services and not options.render_systemd:
-            raise ConfigError("--enable-services requires --render-systemd.")
+        self._validate_service_options(options)
         created = not self.config_path.exists()
         if created:
             config = initialize_config(self.config_path)
@@ -195,6 +248,13 @@ class SetupManager:
                 self._systemctl("enable", "--now", *DEFAULT_ENABLED_UNITS)
                 status = "enabled"
             results.append(SetupCheck("user-systemd", status, str(unit_dir)))
+        if options.render_launchd:
+            launchd_dir = self._render_launchd(config, options)
+            status = "rendered"
+            if options.enable_services:
+                self._enable_launchd(launchd_dir)
+                status = "enabled"
+            results.append(SetupCheck("user-launchd", status, str(launchd_dir)))
         self._write_state(config, results)
         return tuple(results)
 
@@ -319,6 +379,22 @@ class SetupManager:
         config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
         return config_home / "systemd" / "user"
 
+    @staticmethod
+    def _validate_service_options(options: SetupOptions) -> None:
+        if options.render_systemd and options.render_launchd:
+            raise ConfigError("Choose either --render-systemd or --render-launchd.")
+        if options.enable_services and not (
+            options.render_systemd or options.render_launchd
+        ):
+            raise ConfigError(
+                "--enable-services requires --render-systemd or --render-launchd."
+            )
+
+    def _launchd_dir(self, options: SetupOptions) -> Path:
+        if options.launchd_dir:
+            return options.launchd_dir.expanduser().resolve()
+        return Path.home() / "Library" / "LaunchAgents"
+
     def _render_systemd(self, config: AppConfig, options: SetupOptions) -> Path:
         if options.ingestion_dir is None:
             raise ConfigError("--ingestion-dir is required with --render-systemd.")
@@ -387,6 +463,128 @@ class SetupManager:
             destination.write_text(content, encoding="utf-8")
             destination.chmod(0o600)
         return unit_dir
+
+    def _render_launchd(self, config: AppConfig, options: SetupOptions) -> Path:
+        if options.ingestion_dir is None:
+            raise ConfigError("--ingestion-dir is required with --render-launchd.")
+        ingestion_dir = options.ingestion_dir.expanduser().resolve()
+        if not (ingestion_dir / "backend").is_dir():
+            raise ConfigError(f"Invalid ingestion directory: {ingestion_dir}")
+        env_file = ingestion_dir / ".env"
+        python = ingestion_dir / ".venv/bin/python"
+        if not env_file.is_file():
+            raise ConfigError(f"Missing ingestion environment file: {env_file}")
+        if options.enable_services and not python.is_file():
+            raise ConfigError(f"Missing ingestion virtual environment: {python}")
+
+        openclaw_env = (
+            (options.openclaw_env or config.paths.config_dir / "openclaw.env")
+            .expanduser()
+            .resolve()
+        )
+        if not openclaw_env.exists():
+            openclaw_env.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            openclaw_env.write_text(
+                "# Optional OpenClaw environment\n", encoding="utf-8"
+            )
+            openclaw_env.chmod(0o600)
+
+        media_dir = (
+            (options.openclaw_media_dir or config.paths.data_dir / "openclaw-media")
+            .expanduser()
+            .resolve()
+        )
+        for directory in (
+            media_dir / "inbound",
+            config.paths.data_dir / "sessions" / "bilibili",
+            config.paths.data_dir / "sessions" / "xiaohongshu",
+            ingestion_dir / "secrets",
+            ingestion_dir / "staging",
+            ingestion_dir / "temp",
+        ):
+            directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+
+        launchd_dir = self._launchd_dir(options)
+        launchd_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        runtime_dir = config.paths.state_dir / "launchd"
+        log_dir = config.paths.state_dir / "logs"
+        runtime_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        log_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+
+        for job in LAUNCHD_JOBS:
+            label = str(job["label"])
+            wrapper = runtime_dir / f"{label}.command"
+            arguments = [str(python), *[str(value) for value in job["arguments"]]]
+            wrapper_content = "\n".join(
+                (
+                    "#!/bin/sh",
+                    "set -a",
+                    f"[ ! -f {shlex.quote(str(env_file))} ] || . {shlex.quote(str(env_file))}",
+                    f"[ ! -f {shlex.quote(str(openclaw_env))} ] || . {shlex.quote(str(openclaw_env))}",
+                    "set +a",
+                    "exec " + " ".join(shlex.quote(value) for value in arguments),
+                    "",
+                )
+            )
+            wrapper.write_text(wrapper_content, encoding="utf-8")
+            wrapper.chmod(0o700)
+
+            payload: dict[str, Any] = {
+                "Label": label,
+                "ProgramArguments": [str(wrapper)],
+                "WorkingDirectory": str(ingestion_dir),
+                "RunAtLoad": bool(job["run_at_load"]),
+                "ProcessType": "Background",
+                "LowPriorityIO": True,
+                "Umask": 0o077,
+                "StandardOutPath": str(log_dir / f"{label}.out.log"),
+                "StandardErrorPath": str(log_dir / f"{label}.err.log"),
+            }
+            if job.get("keep_alive_on_failure"):
+                payload["KeepAlive"] = {"SuccessfulExit": False}
+            if job.get("throttle_interval"):
+                payload["ThrottleInterval"] = int(job["throttle_interval"])
+            if job.get("start_interval"):
+                payload["StartInterval"] = int(job["start_interval"])
+            destination = launchd_dir / f"{label}.plist"
+            destination.write_bytes(plistlib.dumps(payload, sort_keys=True))
+            destination.chmod(0o600)
+        return launchd_dir
+
+    def _enable_launchd(self, launchd_dir: Path) -> None:
+        if not shutil.which("launchctl"):
+            raise ConfigError("launchctl is required for --enable-services on macOS.")
+        domain = f"gui/{os.getuid()}"
+        for label in LAUNCHD_LABELS:
+            self._run(
+                ["launchctl", "bootout", f"{domain}/{label}"],
+                capture_output=True,
+            )
+        loaded: list[str] = []
+        try:
+            for label in LAUNCHD_LABELS:
+                result = self._run(
+                    [
+                        "launchctl",
+                        "bootstrap",
+                        domain,
+                        str(launchd_dir / f"{label}.plist"),
+                    ],
+                    capture_output=True,
+                )
+                if result.returncode:
+                    detail = (
+                        result.stderr or result.stdout or "launchctl failed"
+                    ).strip()
+                    raise RuntimeError(detail)
+                loaded.append(label)
+        except Exception:
+            for label in reversed(loaded):
+                self._run(
+                    ["launchctl", "bootout", f"{domain}/{label}"],
+                    capture_output=True,
+                )
+            raise
 
     def _systemctl(self, *arguments: str) -> None:
         if not shutil.which("systemctl"):

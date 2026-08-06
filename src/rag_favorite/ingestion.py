@@ -14,7 +14,7 @@ from typing import Any
 
 from .config import AppConfig, ConfigError
 from .openclaw import OpenClawConflictError, OpenClawError, OpenClawManager
-from .setup import SetupManager, SetupOptions
+from .setup import LAUNCHD_LABELS, SetupManager, SetupOptions
 
 PLUGIN_ID = "video-knowledge-ingest"
 CAPABILITY_TOOL = "video_ingestion_capabilities"
@@ -168,12 +168,17 @@ class IngestionManager:
         *,
         install_dependencies: bool = False,
         render_systemd: bool = False,
+        render_launchd: bool = False,
         enable_services: bool = False,
         register_openclaw: bool = False,
         plugin_manager: OpenClawPluginManager | None = None,
     ) -> dict[str, Any]:
-        if enable_services and not render_systemd:
-            raise ConfigError("--enable-services requires --render-systemd.")
+        if render_systemd and render_launchd:
+            raise ConfigError("Choose either --render-systemd or --render-launchd.")
+        if enable_services and not (render_systemd or render_launchd):
+            raise ConfigError(
+                "--enable-services requires --render-systemd or --render-launchd."
+            )
         detection = self.detect()
         changes: list[str] = []
         if not detection.env_exists:
@@ -189,6 +194,8 @@ class IngestionManager:
                 changes.append("install-python-dependencies")
         if render_systemd:
             changes.append("render-user-systemd")
+        if render_launchd:
+            changes.append("render-user-launchd")
         if enable_services:
             changes.append("enable-user-services")
         plugin_plan: dict[str, Any] | None = None
@@ -213,6 +220,7 @@ class IngestionManager:
         *,
         install_dependencies: bool = False,
         render_systemd: bool = False,
+        render_launchd: bool = False,
         enable_services: bool = False,
         register_openclaw: bool = False,
         plugin_manager: OpenClawPluginManager | None = None,
@@ -220,6 +228,7 @@ class IngestionManager:
         plan = self.plan(
             install_dependencies=install_dependencies,
             render_systemd=render_systemd,
+            render_launchd=render_launchd,
             enable_services=enable_services,
             register_openclaw=register_openclaw,
             plugin_manager=plugin_manager,
@@ -286,6 +295,18 @@ class IngestionManager:
             steps.append(
                 "enabled-user-services" if enable_services else "rendered-user-systemd"
             )
+        if render_launchd:
+            SetupManager(self.config.source).apply(
+                SetupOptions(
+                    migrate_database=False,
+                    render_launchd=True,
+                    enable_services=enable_services,
+                    ingestion_dir=project,
+                )
+            )
+            steps.append(
+                "enabled-user-services" if enable_services else "rendered-user-launchd"
+            )
         plugin_result: dict[str, Any] | None = None
         if register_openclaw:
             manager = plugin_manager or self.openclaw_plugin_manager()
@@ -333,19 +354,34 @@ class IngestionManager:
     ) -> dict[str, Any]:
         steps: list[str] = []
         if disable_services:
-            if not shutil.which("systemctl"):
-                raise IngestionError("systemctl is required for --disable-services.")
-            units = (
-                "video-ingestion-worker.service",
-                "video-author-discovery-worker.service",
-                "video-batch-notification-worker.service",
-                "video-ingestion-cleanup.timer",
-                "xhs-session-check.timer",
-            )
-            self._run(
-                ["systemctl", "--user", "disable", "--now", *units],
-                timeout=120,
-            )
+            if sys.platform == "darwin":
+                if not shutil.which("launchctl"):
+                    raise IngestionError(
+                        "launchctl is required for --disable-services."
+                    )
+                domain = f"gui/{os.getuid()}"
+                for label in LAUNCHD_LABELS:
+                    self._run(
+                        ["launchctl", "bootout", f"{domain}/{label}"],
+                        check=False,
+                        timeout=30,
+                    )
+            else:
+                if not shutil.which("systemctl"):
+                    raise IngestionError(
+                        "systemctl is required for --disable-services."
+                    )
+                units = (
+                    "video-ingestion-worker.service",
+                    "video-author-discovery-worker.service",
+                    "video-batch-notification-worker.service",
+                    "video-ingestion-cleanup.timer",
+                    "xhs-session-check.timer",
+                )
+                self._run(
+                    ["systemctl", "--user", "disable", "--now", *units],
+                    timeout=120,
+                )
             steps.append("disabled-user-services")
         plugin_result: dict[str, Any] | None = None
         if unregister_openclaw:

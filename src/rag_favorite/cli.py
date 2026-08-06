@@ -66,9 +66,11 @@ def create_parser(config: AppConfig) -> argparse.ArgumentParser:
     setup.add_argument("--pull-model", action="store_true")
     setup.add_argument("--skip-database", action="store_true")
     setup.add_argument("--render-systemd", action="store_true")
+    setup.add_argument("--render-launchd", action="store_true")
     setup.add_argument("--enable-services", action="store_true")
     setup.add_argument("--ingestion-dir", type=Path)
     setup.add_argument("--systemd-dir", type=Path)
+    setup.add_argument("--launchd-dir", type=Path)
     setup.add_argument("--openclaw-env", type=Path)
     setup.add_argument("--openclaw-media-dir", type=Path)
     setup.add_argument("--wait-seconds", type=int, default=60)
@@ -150,6 +152,7 @@ def create_parser(config: AppConfig) -> argparse.ArgumentParser:
     for selected in (ingestion_plan, ingestion_install):
         selected.add_argument("--install-dependencies", action="store_true")
         selected.add_argument("--render-systemd", action="store_true")
+        selected.add_argument("--render-launchd", action="store_true")
         selected.add_argument("--enable-services", action="store_true")
     ingestion_commands.add_parser(
         "status",
@@ -218,16 +221,16 @@ def _execute(raw: list[str]) -> int:
             for row in rows:
                 print(f"{row['key']}\t{row['name']}\t{row['path']}")
     elif arguments.command == "setup":
-        if arguments.enable_services and not arguments.render_systemd:
-            raise ConfigError("--enable-services requires --render-systemd.")
         options = SetupOptions(
             start_services=arguments.start_services,
             migrate_database=not arguments.skip_database,
             pull_model=arguments.pull_model,
             render_systemd=arguments.render_systemd,
+            render_launchd=arguments.render_launchd,
             enable_services=arguments.enable_services,
             ingestion_dir=arguments.ingestion_dir,
             systemd_dir=arguments.systemd_dir,
+            launchd_dir=arguments.launchd_dir,
             openclaw_env=arguments.openclaw_env,
             openclaw_media_dir=arguments.openclaw_media_dir,
             wait_seconds=arguments.wait_seconds,
@@ -309,6 +312,7 @@ def _execute(raw: list[str]) -> int:
             result = manager.plan(
                 install_dependencies=arguments.install_dependencies,
                 render_systemd=arguments.render_systemd,
+                render_launchd=arguments.render_launchd,
                 enable_services=arguments.enable_services,
                 register_openclaw=arguments.with_openclaw,
                 plugin_manager=plugin_manager,
@@ -317,6 +321,7 @@ def _execute(raw: list[str]) -> int:
             result = manager.install(
                 install_dependencies=arguments.install_dependencies,
                 render_systemd=arguments.render_systemd,
+                render_launchd=arguments.render_launchd,
                 enable_services=arguments.enable_services,
                 register_openclaw=arguments.with_openclaw,
                 plugin_manager=plugin_manager,

@@ -1,0 +1,11 @@
+include CHANGELOG.md
+include CONTRIBUTING.md
+include SECURITY.md
+include README_ZH.md
+recursive-include docs *.md *.svg
+recursive-include ingestion *
+recursive-include packaging/macos *
+recursive-include scripts *.py
+prune ingestion/.pytest_cache
+prune ingestion/.ruff_cache
+global-exclude __pycache__ *.py[cod] .DS_Store

@@ -51,7 +51,8 @@ The lifecycle:
 3. creates private cache, staging, media, and writable collection directories;
 4. optionally creates `ingestion/.venv` and installs the declared ingestion
    requirements;
-5. optionally renders hardened user-level systemd services;
+5. optionally renders hardened user-level systemd services on Linux or
+   owner-only launchd jobs on macOS;
 6. optionally links and probes the repository's OpenClaw plugin.
 
 Dependency installation is always explicit because it performs network access
@@ -70,8 +71,18 @@ rag-favorite ingestion install \
   --enable-services
 ```
 
-`--enable-services` requires `--render-systemd`. Both operate only on the
-current user's systemd instance and never invoke `sudo`.
+On Linux, `--enable-services` requires `--render-systemd`. Both operate only
+on the current user's systemd instance and never invoke `sudo`.
+
+On macOS, use the equivalent launchd gate:
+
+```bash
+rag-favorite ingestion plan --render-launchd --enable-services
+rag-favorite ingestion install --render-launchd --enable-services
+```
+
+The jobs are written to `~/Library/LaunchAgents` and remain scoped to the
+current GUI user. See the [macOS guide](macos.md).
 
 ## Credentials and readiness
 

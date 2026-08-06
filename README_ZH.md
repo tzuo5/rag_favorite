@@ -42,12 +42,32 @@ OpenClaw，也不要求购买托管向量数据库或 embedding API。
 | **标准 MCP** | 通过 stdio 提供只读的 `rag_search` 和 `rag_status`。 |
 | **OpenClaw 适配** | 支持检测、预览、安装、探测、备份、回滚和卸载。 |
 | **采集生命周期** | 安全准备媒体 worker，并可选地向 OpenClaw 注册 Telegram adapter。 |
+| **原生 macOS 发行包** | 提供经过真机 Runner 验证的 Apple Silicon/Intel 包和 launchd worker。 |
 | **安全初始化** | 首次运行可先 plan，再幂等 apply；不会调用 `sudo`。 |
 
 默认安全边界：只接受 loopback PostgreSQL/Ollama；MCP 只读；OpenClaw
 修改前自动创建仅所有者可读的校验备份，探测失败会恢复原始配置。
 
 ## 快速开始
+
+### macOS 下载版
+
+从 [最新 Release](https://github.com/tzuo5/rag_favorite/releases/latest) 下载
+与你的 Mac 匹配的 Apple Silicon 或 Intel 压缩包，校验 `.sha256` 后，右键
+`install.command` 并选择“打开”：
+
+```bash
+uname -m  # arm64 或 x86_64
+./install.command
+export PATH="$HOME/.local/bin:$PATH"
+rag-favorite --version
+```
+
+发行包会自动准备隔离 Python 环境和完整媒体依赖；FFmpeg、PostgreSQL +
+pgvector、Ollama 与可选 OpenClaw 仍由使用者控制。详见
+[macOS 安装文档](docs/macos.md)。
+
+### 源码安装
 
 需要 Python 3.11+、Docker Compose，以及足够存放 Ollama 模型的磁盘空间。
 
@@ -128,6 +148,8 @@ rag-favorite ingestion install --install-dependencies --render-systemd --with-op
 rag-favorite ingestion status --with-openclaw
 ```
 
+macOS 请将 `--render-systemd` 替换为 `--render-launchd`。
+
 安装 Python 依赖、启用用户级服务、注册 OpenClaw 插件是三个独立的显式开关。
 请先阅读 [Phase 5 生命周期文档](docs/phase-5-ingestion-lifecycle.md)和
 [中文接入指南](ingestion/README_ZH.md)。
@@ -166,6 +188,7 @@ flowchart LR
 - [标准 MCP Server](docs/phase-3-standard-mcp.md)
 - [OpenClaw 安全接入](docs/phase-4-openclaw-integration.md)
 - [媒体采集与 Telegram 生命周期](docs/phase-5-ingestion-lifecycle.md)
+- [macOS 发行包与 launchd](docs/macos.md)
 - [媒体采集部署](ingestion/docs/DEPLOYMENT.md)
 - [安全政策](SECURITY.md)
 - [贡献指南](CONTRIBUTING.md)
@@ -178,7 +201,7 @@ python -m pip install -e ".[mcp,ingestion,dev]"
 make check
 ```
 
-`v1.1.0` 在稳定产品中加入了媒体采集与 Telegram adapter 生命周期。CLI、数据库迁移、只读 MCP 契约和受保护的
+`v1.2.0` 新增经过双架构验证的 macOS 下载包与原生 launchd worker。CLI、数据库迁移、只读 MCP 契约和受保护的
 OpenClaw 注册流程视为公开接口；媒体采集适配器可能随上游平台行为变化。
 
 ## License

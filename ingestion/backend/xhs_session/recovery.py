@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
+import sys
 from collections.abc import Callable
 
 from backend.ingestion.config import Settings
@@ -18,17 +20,12 @@ def probe_session_now(
     if not settings.xiaohongshu_session_enabled:
         return False
     python = settings.root / ".venv/bin/python"
+    command = [str(python), "-m", "backend.xhs_session.cli", "status", "--probe"]
+    if sys.platform != "darwin":
+        command = ["/usr/bin/xvfb-run", "-a", *command]
     try:
         result = runner(
-            [
-                "/usr/bin/xvfb-run",
-                "-a",
-                str(python),
-                "-m",
-                "backend.xhs_session.cli",
-                "status",
-                "--probe",
-            ],
+            command,
             cwd=settings.root,
             check=False,
             capture_output=True,
@@ -46,18 +43,26 @@ def trigger_session_refresh(
     *,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> bool:
-    """Ask systemd to run the singleton manager without blocking the worker."""
+    """Ask the user service manager to run the singleton refresh job."""
     if not settings.xiaohongshu_session_enabled:
         return False
+    command = [
+        "systemctl",
+        "--user",
+        "start",
+        "--no-block",
+        "xhs-session-manager.service",
+    ]
+    if sys.platform == "darwin":
+        command = [
+            "launchctl",
+            "kickstart",
+            "-k",
+            f"gui/{os.getuid()}/com.rag-favorite.xhs-session-manager",
+        ]
     try:
         result = runner(
-            [
-                "systemctl",
-                "--user",
-                "start",
-                "--no-block",
-                "xhs-session-manager.service",
-            ],
+            command,
             check=False,
             capture_output=True,
             text=True,
