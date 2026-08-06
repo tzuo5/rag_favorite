@@ -28,6 +28,9 @@ All notable changes to this project are documented here. The project follows
   unless `--purge-data` is explicitly requested.
 - The pinned macOS `uv` 0.11.16 binaries are verified against upstream release
   digests before packaging.
+- macOS installs the MCP SDK's local-stdio dependency set without its unused
+  HTTP OAuth crypto extra, avoiding unsupported Intel source builds instead of
+  downgrading to an older cryptography release.
 
 ## [1.1.0] - 2026-08-06
 

@@ -137,6 +137,7 @@ jobs:
             --yes --prefix "${TEST_PREFIX}" --bin-dir "${TEST_BIN}"
           HOME="${TEST_HOME}" "${TEST_BIN}/rag-favorite" --version
           HOME="${TEST_HOME}" "${TEST_BIN}/rag-favorite" config validate
+          HOME="${TEST_HOME}" "${TEST_BIN}/rag-favorite" mcp smoke
           HOME="${TEST_HOME}" "${TEST_BIN}/rag-favorite" ingestion detect \
             --project-dir "${TEST_PREFIX}/ingestion" --json
           for plist in "${TEST_HOME}/Library/LaunchAgents/"*.plist; do

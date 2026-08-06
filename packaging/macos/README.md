@@ -9,6 +9,10 @@ Apple's system Python.
 The bundled `uv` executable is redistributed under its upstream Apache-2.0 or
 MIT terms; both license texts are included in `payload/`.
 
+The local MCP endpoint uses stdio. Its reviewed runtime dependency set omits the
+SDK's unused HTTP OAuth crypto extra, while retaining FastMCP, protocol clients,
+both read-only tools, and OpenClaw compatibility.
+
 ## Install
 
 1. Extract the archive.

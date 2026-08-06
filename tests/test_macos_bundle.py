@@ -55,6 +55,7 @@ def test_macos_bundle_contains_reviewed_payload_and_installers(tmp_path: Path) -
         source.extractall(extracted, filter="data")
     bundle = extracted / f"rag-favorite-{VERSION}-macos-arm64"
     assert (bundle / "payload" / wheel.name).is_file()
+    assert (bundle / "payload/mcp-stdio-requirements.txt").is_file()
     assert (bundle / "payload/ingestion/backend/ingestion/cli.py").is_file()
     assert (bundle / "payload/ingestion/openclaw-plugin/index.js").is_file()
     assert not (bundle / "payload/ingestion/tests").exists()
@@ -82,6 +83,7 @@ def test_macos_bundle_contains_reviewed_payload_and_installers(tmp_path: Path) -
     checksums = (bundle / "SHA256SUMS").read_text(encoding="utf-8")
     assert f"payload/{wheel.name}" in checksums
     assert "payload/uv" in checksums
+    assert "payload/mcp-stdio-requirements.txt" in checksums
 
 
 def test_macos_bundle_rejects_unexpected_wheel_and_unsafe_uv_archive(
@@ -116,3 +118,17 @@ def test_macos_installer_templates_are_bash_32_compatible() -> None:
             ).returncode
             == 0
         )
+
+
+def test_macos_installer_keeps_mcp_stdio_without_crypto_extra() -> None:
+    installer = (ROOT / "packaging/macos/install.command").read_text(encoding="utf-8")
+    requirements = (
+        ROOT / "packaging/macos/mcp-stdio-requirements.txt"
+    ).read_text(encoding="utf-8")
+    assert '"mcp==1.29.0"' in installer
+    assert "--no-deps" in installer
+    assert "PyJWT>=2.10.1,<3" in requirements
+    assert "cryptography" not in requirements
+    assert "mcp smoke" in (ROOT / ".github/workflows/ci.yml").read_text(
+        encoding="utf-8"
+    )

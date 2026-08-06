@@ -123,8 +123,15 @@ export UV_PYTHON_INSTALL_DIR="$PREFIX/runtime/python"
 export UV_CACHE_DIR="$PREFIX/runtime/uv-cache"
 "$UV" python install 3.12
 "$UV" venv --python 3.12 "$VENV"
-"$UV" pip install --python "$VENV/bin/python" "$PREFIX/wheels/$WHEEL_NAME[mcp]"
+"$UV" pip install --python "$VENV/bin/python" "$PREFIX/wheels/$WHEEL_NAME"
+# rag-favorite exposes MCP only over local stdio. Installing the SDK's reviewed
+# stdio dependency set avoids its unused HTTP OAuth crypto extra, for which
+# upstream no longer publishes an Intel macOS wheel.
+"$UV" pip install --python "$VENV/bin/python" \
+  --requirement "$PAYLOAD/mcp-stdio-requirements.txt"
+"$UV" pip install --python "$VENV/bin/python" --no-deps "mcp==1.29.0"
 "$UV" pip install --python "$VENV/bin/python" --requirement "$INGESTION/requirements.txt"
+"$UV" pip check --python "$VENV/bin/python"
 if [ "$SKIP_BROWSER" != true ]; then
   "$VENV/bin/python" -m playwright install chromium
 fi
@@ -135,7 +142,9 @@ mkdir -p "$PREFIX/bin"
 cat > "$PREFIX/bin/rag-favorite" <<'LAUNCHER'
 #!/bin/bash
 set -euo pipefail
-APP_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
+LAUNCHER_PATH="$0"
+[ ! -L "$LAUNCHER_PATH" ] || LAUNCHER_PATH="$(readlink "$LAUNCHER_PATH")"
+APP_ROOT="$(cd "$(dirname "$LAUNCHER_PATH")/.." && pwd -P)"
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/Library/Preferences}"
 export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/Library/Application Support}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/Library/Caches}"
@@ -147,7 +156,9 @@ LAUNCHER
 cat > "$PREFIX/bin/rag-favorite-mcp" <<'LAUNCHER'
 #!/bin/bash
 set -euo pipefail
-APP_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
+LAUNCHER_PATH="$0"
+[ ! -L "$LAUNCHER_PATH" ] || LAUNCHER_PATH="$(readlink "$LAUNCHER_PATH")"
+APP_ROOT="$(cd "$(dirname "$LAUNCHER_PATH")/.." && pwd -P)"
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/Library/Preferences}"
 export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/Library/Application Support}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/Library/Caches}"
@@ -159,7 +170,9 @@ LAUNCHER
 cat > "$PREFIX/bin/rag-favorite-web" <<'LAUNCHER'
 #!/bin/bash
 set -euo pipefail
-APP_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
+LAUNCHER_PATH="$0"
+[ ! -L "$LAUNCHER_PATH" ] || LAUNCHER_PATH="$(readlink "$LAUNCHER_PATH")"
+APP_ROOT="$(cd "$(dirname "$LAUNCHER_PATH")/.." && pwd -P)"
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/Library/Preferences}"
 export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/Library/Application Support}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/Library/Caches}"

@@ -126,6 +126,10 @@ def build(*, wheel: Path, uv_archive: Path, architecture: str, output: Path) -> 
         shutil.copy2(ROOT / "LICENSE", payload / "rag-favorite-LICENSE")
         shutil.copy2(ROOT / "LICENSE", payload / "uv-LICENSE-APACHE")
         shutil.copy2(MACOS_TEMPLATES / "UV-LICENSE-MIT", payload / "uv-LICENSE-MIT")
+        shutil.copy2(
+            MACOS_TEMPLATES / "mcp-stdio-requirements.txt",
+            payload / "mcp-stdio-requirements.txt",
+        )
         _copy_uv(uv_archive, payload / "uv")
         _copy_ingestion(payload / "ingestion")
         (payload / "bundle-metadata.json").write_text(

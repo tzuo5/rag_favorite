@@ -54,6 +54,12 @@ Third-party packages and Chromium are downloaded during installation. Use
 `--skip-browser` only if Xiaohongshu/Bilibili browser-session features are not
 required.
 
+The product MCP endpoint is local stdio only. The archive therefore installs
+the MCP SDK's stdio runtime set without its unused HTTP OAuth crypto extra. This
+keeps both Mac architectures on supported wheels; it does not remove MCP tools,
+the protocol client, or OpenClaw compatibility. CI runs a real MCP handshake on
+both architectures.
+
 ```bash
 ./install.command
 export PATH="$HOME/.local/bin:$PATH"
