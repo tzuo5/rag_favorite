@@ -35,6 +35,9 @@ reporter unless anonymity is requested.
   named MCP entry and validates, backs up, probes, and rolls back configuration.
 - Media platform adapters process untrusted remote metadata and should run with
   least privilege in an isolated environment.
+- macOS assets publish SHA-256 sidecars and verify their embedded payload before
+  installation. Current archives are not Apple-notarized; use Finder's scoped
+  **Open** confirmation and never disable Gatekeeper globally.
 
 Users are responsible for access control on their host, database, OpenClaw
 gateway, Telegram bot, collection directories, and backups.

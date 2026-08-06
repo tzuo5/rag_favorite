@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import time
 from pathlib import Path
 from typing import Any, Self
@@ -47,7 +48,7 @@ class BrowserSession:
         self.page: Any | None = None
 
     def open(self) -> BrowserSession:
-        if not os.getenv("DISPLAY"):
+        if sys.platform != "darwin" and not os.getenv("DISPLAY"):
             raise BrowserUnavailable(
                 "DISPLAY is unavailable; run the command through xvfb-run"
             )

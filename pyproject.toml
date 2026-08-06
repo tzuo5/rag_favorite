@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rag-favorite"
-version = "1.1.0"
+version = "1.2.0"
 description = "Local-first document and media RAG with a standard MCP interface"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -15,6 +15,7 @@ keywords = ["rag", "mcp", "pgvector", "ollama", "openclaw"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Environment :: Console",
+  "Operating System :: MacOS",
   "Operating System :: POSIX",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",

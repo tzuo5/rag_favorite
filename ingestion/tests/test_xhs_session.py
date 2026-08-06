@@ -76,10 +76,7 @@ def browser_cookies() -> list[dict]:
 
 
 def test_generic_code_minus_one_is_not_treated_as_expired_auth() -> None:
-    assert (
-        _status_from_payload({"success": False, "code": -1})
-        == SessionStatus.UNKNOWN
-    )
+    assert _status_from_payload({"success": False, "code": -1}) == SessionStatus.UNKNOWN
 
 
 def test_browser_login_signal_recovers_from_unsigned_selfinfo_406() -> None:
@@ -116,8 +113,7 @@ def test_browser_login_signal_recovers_from_unsigned_selfinfo_406() -> None:
             return Locator("li.user.side-bar-component" in selector)
 
     assert (
-        probe_browser_context(Context(), Page()).status
-        == SessionStatus.SESSION_VALID
+        probe_browser_context(Context(), Page()).status == SessionStatus.SESSION_VALID
     )
 
 
@@ -218,6 +214,17 @@ def test_corrupt_chromium_local_state_is_detected_before_launch(
         BrowserSession(settings).open()
 
 
+def test_macos_browser_does_not_require_x11_display(tmp_path, monkeypatch) -> None:
+    settings = session_settings(tmp_path)
+    settings.xiaohongshu_profile_dir.mkdir(parents=True)
+    (settings.xiaohongshu_profile_dir / "Local State").write_text("{")
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.setattr("backend.xhs_session.browser.sys.platform", "darwin")
+
+    with pytest.raises(ProfileCorrupt):
+        BrowserSession(settings).open()
+
+
 def test_session_refresh_trigger_is_feature_gated(tmp_path) -> None:
     calls = []
 
@@ -254,6 +261,30 @@ def test_session_refresh_trigger_is_feature_gated(tmp_path) -> None:
         "status",
         "--probe",
     ]
+
+
+def test_macos_session_refresh_uses_launchd_without_xvfb(tmp_path, monkeypatch) -> None:
+    calls = []
+
+    def runner(*args, **kwargs):
+        calls.append((args, kwargs))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr("backend.xhs_session.recovery.sys.platform", "darwin")
+    settings = Settings(
+        xiaohongshu_session_enabled=True,
+        xiaohongshu_session_root=tmp_path,
+        root=tmp_path,
+    )
+
+    assert trigger_session_refresh(settings, runner=runner)
+    assert calls[0][0][0][:3] == ["launchctl", "kickstart", "-k"]
+    assert calls[0][0][0][-1].endswith("com.rag-favorite.xhs-session-manager")
+
+    calls.clear()
+    assert probe_session_now(settings, runner=runner)
+    assert calls[0][0][0][0] == str(tmp_path / ".venv/bin/python")
+    assert "/usr/bin/xvfb-run" not in calls[0][0][0]
 
 
 @pytest.mark.parametrize(
@@ -439,9 +470,7 @@ def test_xiaohongshu_auth_discovery_requeues_and_triggers_login(
 
         @staticmethod
         async def discover(*_args, **_kwargs):
-            raise DiscoveryAdapterError(
-                "AUTH_EXPIRED", "authentication expired"
-            )
+            raise DiscoveryAdapterError("AUTH_EXPIRED", "authentication expired")
 
     triggers = []
     monkeypatch.setattr(
@@ -449,9 +478,7 @@ def test_xiaohongshu_auth_discovery_requeues_and_triggers_login(
         lambda settings: triggers.append(settings) or True,
     )
     repository = Repository()
-    result = asyncio.run(
-        AuthorDiscoveryWorker(repository, Adapter()).run_once()
-    )
+    result = asyncio.run(AuthorDiscoveryWorker(repository, Adapter()).run_once())
     assert result["state"] == "QUEUED"
     assert repository.requeued == [("discovery", "AUTH_EXPIRED")]
     assert repository.failed == []

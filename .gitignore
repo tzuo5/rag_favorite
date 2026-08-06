@@ -20,6 +20,7 @@ node_modules/
 .ruff_cache/
 build/
 dist/
+dist-macos/
 *.egg-info/
 
 # Runtime data

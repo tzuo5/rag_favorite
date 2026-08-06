@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import subprocess
+import sys
 from collections.abc import Callable
 
 from backend.ingestion.config import Settings
@@ -50,15 +52,23 @@ def trigger_session_refresh(
 ) -> bool:
     if not settings.bilibili_session_enabled:
         return False
+    command = [
+        "systemctl",
+        "--user",
+        "start",
+        "--no-block",
+        "bilibili-session-manager.service",
+    ]
+    if sys.platform == "darwin":
+        command = [
+            "launchctl",
+            "kickstart",
+            "-k",
+            f"gui/{os.getuid()}/com.rag-favorite.bilibili-session-manager",
+        ]
     try:
         result = runner(
-            [
-                "systemctl",
-                "--user",
-                "start",
-                "--no-block",
-                "bilibili-session-manager.service",
-            ],
+            command,
             check=False,
             capture_output=True,
             text=True,

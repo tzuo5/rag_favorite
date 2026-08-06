@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 
 from rag_favorite.cli import main
-from rag_favorite.config import load_config
+from rag_favorite.config import ConfigError, load_config
 from rag_favorite.ingestion import (
     CAPABILITY_TOOL,
     PLUGIN_ID,
@@ -16,6 +16,7 @@ from rag_favorite.ingestion import (
     OpenClawPluginManager,
 )
 from rag_favorite.openclaw import OpenClawConflictError, OpenClawError
+from rag_favorite.setup import LAUNCHD_LABELS
 
 
 def _product(tmp_path: Path, monkeypatch: object):
@@ -82,6 +83,23 @@ def test_plan_is_read_only_and_describes_network_work(
     assert "render-user-systemd" in result["changes"]
     assert not (project / ".env").exists()
     assert not (project / ".venv").exists()
+
+
+def test_plan_requires_one_matching_service_manager(
+    tmp_path: Path, monkeypatch: object
+) -> None:
+    product = _product(tmp_path, monkeypatch)
+    project = _project(tmp_path)
+    manager = IngestionManager(product, project_dir=project)
+
+    with pytest.raises(
+        ConfigError, match="either --render-systemd or --render-launchd"
+    ):
+        manager.plan(render_systemd=True, render_launchd=True)
+    with pytest.raises(
+        ConfigError, match="requires --render-systemd or --render-launchd"
+    ):
+        manager.plan(enable_services=True)
 
 
 def test_install_creates_private_secret_free_environment_and_preserves_it(
@@ -156,6 +174,35 @@ def test_dependency_install_is_idempotent(tmp_path: Path, monkeypatch: object) -
     assert second["ready"] is True
     assert pip_calls_after_first == 1
     assert sum(command[1:3] == ["-m", "pip"] for command in runner.commands) == 1
+
+
+def test_macos_uninstall_disables_only_managed_launchd_jobs(
+    tmp_path: Path, monkeypatch: object
+) -> None:
+    product = _product(tmp_path, monkeypatch)
+    project = _project(tmp_path)
+    commands: list[list[str]] = []
+
+    def runner(command: list[str], **_kwargs: Any):
+        commands.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr("rag_favorite.ingestion.sys.platform", "darwin")
+    monkeypatch.setattr(
+        "rag_favorite.ingestion.shutil.which", lambda _name: "/bin/tool"
+    )
+    result = IngestionManager(
+        product, project_dir=project, command_runner=runner
+    ).uninstall(disable_services=True)
+
+    assert result["steps"] == ["disabled-user-services"]
+    bootouts = [
+        command for command in commands if command[:2] == ["launchctl", "bootout"]
+    ]
+    assert len(bootouts) == len(LAUNCHD_LABELS)
+    assert {command[-1].rsplit("/", 1)[-1] for command in bootouts} == set(
+        LAUNCHD_LABELS
+    )
 
 
 def test_cli_detect_reports_machine_readable_status(

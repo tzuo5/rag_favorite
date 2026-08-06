@@ -96,6 +96,25 @@ def test_bilibili_refresh_is_feature_gated(tmp_path: Path) -> None:
     assert calls[0][0][-1] == "bilibili-session-manager.service"
 
 
+def test_bilibili_refresh_uses_launchd_on_macos(tmp_path: Path, monkeypatch) -> None:
+    calls = []
+
+    def runner(args, **kwargs):
+        calls.append((args, kwargs))
+        return type("Result", (), {"returncode": 0})()
+
+    monkeypatch.setattr("backend.bilibili_session.recovery.sys.platform", "darwin")
+    assert trigger_session_refresh(
+        Settings(
+            bilibili_session_enabled=True,
+            bilibili_session_root=tmp_path,
+        ),
+        runner=runner,
+    )
+    assert calls[0][0][:3] == ["launchctl", "kickstart", "-k"]
+    assert calls[0][0][-1].endswith("com.rag-favorite.bilibili-session-manager")
+
+
 def test_bilibili_412_requires_expired_real_session_before_login(
     tmp_path: Path,
     monkeypatch,

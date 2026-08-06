@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import json
+import plistlib
+import subprocess
 from io import BytesIO
 from pathlib import Path
 from typing import Self
+
+import pytest
 
 from rag_favorite.cli import main
 from rag_favorite.migrations import (
@@ -11,7 +15,7 @@ from rag_favorite.migrations import (
     load_migration,
     migration_checksum,
 )
-from rag_favorite.setup import SYSTEMD_UNITS, SetupManager, SetupOptions
+from rag_favorite.setup import LAUNCHD_LABELS, SYSTEMD_UNITS, SetupManager, SetupOptions
 
 
 def _xdg_environment(monkeypatch: object, tmp_path: Path) -> None:
@@ -99,6 +103,114 @@ def test_setup_renders_private_user_systemd_units(
     assert "@" not in worker
     assert str(ingestion_dir) in worker
     assert (systemd_dir / "video-ingestion-worker.service").stat().st_mode & 0o077 == 0
+
+
+def test_setup_renders_private_launchd_jobs_with_space_safe_paths(
+    tmp_path: Path, monkeypatch: object
+) -> None:
+    _xdg_environment(monkeypatch, tmp_path)
+    config_file = tmp_path / "profile" / "config.toml"
+    ingestion_dir = tmp_path / "Application Support" / "ingestion"
+    (ingestion_dir / "backend").mkdir(parents=True)
+    (ingestion_dir / ".env").write_text("TEST_ONLY=1\n", encoding="utf-8")
+    launchd_dir = tmp_path / "Launch Agents"
+
+    results = SetupManager(config_file).apply(
+        SetupOptions(
+            migrate_database=False,
+            render_launchd=True,
+            ingestion_dir=ingestion_dir,
+            launchd_dir=launchd_dir,
+        )
+    )
+
+    assert results[-1].name == "user-launchd"
+    assert results[-1].status == "rendered"
+    assert {path.stem for path in launchd_dir.glob("*.plist")} == set(LAUNCHD_LABELS)
+    worker_path = launchd_dir / "com.rag-favorite.video-ingestion-worker.plist"
+    worker = plistlib.loads(worker_path.read_bytes())
+    assert worker["Label"] == "com.rag-favorite.video-ingestion-worker"
+    assert worker["RunAtLoad"] is True
+    assert worker["KeepAlive"] == {"SuccessfulExit": False}
+    assert worker["WorkingDirectory"] == str(ingestion_dir)
+    assert worker_path.stat().st_mode & 0o077 == 0
+    wrapper = Path(worker["ProgramArguments"][0])
+    assert wrapper.stat().st_mode & 0o077 == 0
+    assert "'" + str(ingestion_dir / ".env") + "'" in wrapper.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_setup_enables_launchd_jobs_through_gui_domain(
+    tmp_path: Path, monkeypatch: object
+) -> None:
+    _xdg_environment(monkeypatch, tmp_path)
+    monkeypatch.setattr("rag_favorite.setup.shutil.which", lambda name: f"/bin/{name}")
+    config_file = tmp_path / "profile" / "config.toml"
+    ingestion_dir = tmp_path / "ingestion"
+    (ingestion_dir / "backend").mkdir(parents=True)
+    (ingestion_dir / ".venv/bin").mkdir(parents=True)
+    (ingestion_dir / ".venv/bin/python").write_text("", encoding="utf-8")
+    (ingestion_dir / ".env").write_text("TEST_ONLY=1\n", encoding="utf-8")
+    launchd_dir = tmp_path / "launchd"
+    commands: list[list[str]] = []
+
+    def runner(command: list[str], **_kwargs: object):
+        commands.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    results = SetupManager(config_file, command_runner=runner).apply(
+        SetupOptions(
+            migrate_database=False,
+            render_launchd=True,
+            enable_services=True,
+            ingestion_dir=ingestion_dir,
+            launchd_dir=launchd_dir,
+        )
+    )
+
+    assert results[-1].status == "enabled"
+    assert sum(command[1] == "bootout" for command in commands) == len(LAUNCHD_LABELS)
+    assert sum(command[1] == "bootstrap" for command in commands) == len(LAUNCHD_LABELS)
+    assert all(command[2].startswith("gui/") for command in commands)
+
+
+def test_launchd_enable_failure_removes_jobs_started_in_this_attempt(
+    tmp_path: Path, monkeypatch: object
+) -> None:
+    _xdg_environment(monkeypatch, tmp_path)
+    monkeypatch.setattr("rag_favorite.setup.shutil.which", lambda _name: "/bin/tool")
+    config_file = tmp_path / "profile/config.toml"
+    ingestion_dir = tmp_path / "ingestion"
+    (ingestion_dir / "backend").mkdir(parents=True)
+    (ingestion_dir / ".venv/bin").mkdir(parents=True)
+    (ingestion_dir / ".venv/bin/python").write_text("", encoding="utf-8")
+    (ingestion_dir / ".env").write_text("TEST_ONLY=1\n", encoding="utf-8")
+    commands: list[list[str]] = []
+    bootstraps = 0
+
+    def runner(command: list[str], **_kwargs: object):
+        nonlocal bootstraps
+        commands.append(command)
+        if command[1] == "bootstrap":
+            bootstraps += 1
+            if bootstraps == 2:
+                return subprocess.CompletedProcess(command, 1, "", "failed")
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    with pytest.raises(RuntimeError, match="failed"):
+        SetupManager(config_file, command_runner=runner).apply(
+            SetupOptions(
+                migrate_database=False,
+                render_launchd=True,
+                enable_services=True,
+                ingestion_dir=ingestion_dir,
+                launchd_dir=tmp_path / "launchd",
+            )
+        )
+
+    first_label = LAUNCHD_LABELS[0]
+    assert sum(command[-1].endswith(first_label) for command in commands) == 2
 
 
 def test_setup_status_detects_missing_embedding_model(

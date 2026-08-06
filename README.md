@@ -43,6 +43,7 @@ OpenClaw and does not require a hosted vector database or embedding API.
 | **Standard MCP** | Expose `rag_search` and `rag_status` through a read-only stdio server. |
 | **OpenClaw adapter** | Detect, plan, install, probe, back up, roll back, and remove an optional local registration. |
 | **Ingestion lifecycle** | Safely prepare media workers and optionally register the Telegram adapter with OpenClaw. |
+| **Native macOS release** | Download tested Apple Silicon or Intel bundles with isolated Python and launchd workers. |
 | **Safe first run** | Preview an idempotent setup, validate configuration, and start isolated services without `sudo`. |
 
 ### Designed for trust
@@ -58,7 +59,26 @@ OpenClaw and does not require a hosted vector database or embedding API.
 
 ## Quick start
 
-### 1. Install
+### macOS download
+
+Download the matching Apple Silicon or Intel archive from the
+[latest Release](https://github.com/tzuo5/rag_favorite/releases/latest), verify
+its `.sha256` file, then right-click `install.command` and choose **Open**.
+
+```bash
+uname -m  # arm64 or x86_64
+./install.command
+export PATH="$HOME/.local/bin:$PATH"
+rag-favorite --version
+```
+
+The bundle provisions an isolated Python environment and the complete media
+stack. FFmpeg, PostgreSQL + pgvector, Ollama, and optional OpenClaw remain
+operator-controlled external services. See the [macOS guide](docs/macos.md).
+
+### Source install
+
+#### 1. Install
 
 Requirements: Python 3.11+, Docker with Compose, and enough disk space for the
 selected Ollama model.
@@ -73,7 +93,7 @@ python -m pip install --upgrade pip
 python -m pip install -e ".[mcp]"
 ```
 
-### 2. Preview, then apply setup
+#### 2. Preview, then apply setup
 
 ```bash
 rag-favorite setup plan
@@ -94,7 +114,7 @@ Setup creates an owner-only credential file and the following portable layout:
 Already running PostgreSQL and Ollama on loopback? Omit `--start-services`. For
 an offline filesystem-only bootstrap, use `--skip-database`.
 
-### 3. Ingest and search
+#### 3. Ingest and search
 
 ```bash
 rag-favorite ingest ~/Documents/research --collection general
@@ -155,6 +175,8 @@ rag-favorite ingestion plan --install-dependencies --render-systemd --with-openc
 rag-favorite ingestion install --install-dependencies --render-systemd --with-openclaw
 rag-favorite ingestion status --with-openclaw
 ```
+
+On macOS, replace `--render-systemd` with `--render-launchd`.
 
 Dependency installation, service activation, and OpenClaw registration are
 separate explicit gates. Start with the
@@ -227,6 +249,7 @@ Run `rag-favorite <command> --help` for all options.
 - [Standard MCP server](docs/phase-3-standard-mcp.md)
 - [Guarded OpenClaw integration](docs/phase-4-openclaw-integration.md)
 - [Portable media ingestion lifecycle](docs/phase-5-ingestion-lifecycle.md)
+- [macOS release and launchd setup](docs/macos.md)
 - [Media ingestion deployment](ingestion/docs/DEPLOYMENT.md)
 - [Security policy](SECURITY.md)
 - [Contributing guide](CONTRIBUTING.md)
@@ -245,8 +268,8 @@ compatibility suites, Node plugin tests, compile checks, and a wheel build. See
 
 ## Project status
 
-`v1.1.0` adds the portable media-ingestion and Telegram-adapter lifecycle to
-the stable local-first product. The CLI, database migration,
+`v1.2.0` adds downloadable, architecture-tested macOS releases and native
+launchd workers to the stable local-first product. The CLI, database migration,
 read-only MCP contract, and guarded OpenClaw registration are considered public
 interfaces. The ingestion integrations depend on upstream platform behavior and
 are maintained as optional adapters.

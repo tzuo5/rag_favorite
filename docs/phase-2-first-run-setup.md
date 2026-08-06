@@ -70,6 +70,18 @@ enabling services also requires its `.venv`. Templates are written to
 workers should start immediately. This runs `systemctl --user`; it never
 modifies system-wide units.
 
+On macOS, render equivalent per-user launchd jobs instead:
+
+```bash
+rag-favorite setup apply --skip-database \
+  --render-launchd \
+  --ingestion-dir "/absolute/path/to/rag_favorite/ingestion"
+```
+
+The default destination is `~/Library/LaunchAgents`. Add `--enable-services`
+only after reviewing credentials and external database readiness. This uses the
+current GUI user's launchd domain and never invokes `sudo`.
+
 OpenClaw remains optional. If no `--openclaw-env` is supplied, setup creates an
 empty owner-only compatibility file. The `--openclaw-media-dir` default is
 inside the rag-favorite XDG data directory.

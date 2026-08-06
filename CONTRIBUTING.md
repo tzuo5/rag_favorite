@@ -35,6 +35,7 @@ make test-core
 make test-ingestion
 make test-compat
 make test-node
+make test-macos
 make build
 ```
 
@@ -62,5 +63,7 @@ passes and the security boundary is understood.
 - Database changes must be idempotent and include an explicit migration path.
 - OpenClaw remains optional and must never be installed or reconfigured outside
   the named `rag-favorite` MCP registration.
+- macOS bundle changes must pass both Apple Silicon and Intel installation
+  smoke tests before release.
 
 For vulnerabilities, do not open a public issue; follow [SECURITY.md](SECURITY.md).
