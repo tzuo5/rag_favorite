@@ -12,6 +12,7 @@ from . import __version__
 from .bootstrap import initialize_config
 from .config import AppConfig, ConfigError, default_config, load_config, validate_config
 from .embedding import EmbeddingError
+from .ingestion import IngestionError, IngestionManager
 from .mcp_support import (
     client_config,
     protocol_smoke,
@@ -57,9 +58,7 @@ def create_parser(config: AppConfig) -> argparse.ArgumentParser:
     list_parser = collection_commands.add_parser("list")
     list_parser.add_argument("--json", action="store_true")
 
-    setup = commands.add_parser(
-        "setup", help="Plan, apply or inspect first-run setup."
-    )
+    setup = commands.add_parser("setup", help="Plan, apply or inspect first-run setup.")
     setup.add_argument(
         "setup_action", nargs="?", choices=("plan", "apply", "status"), default="apply"
     )
@@ -88,9 +87,7 @@ def create_parser(config: AppConfig) -> argparse.ArgumentParser:
     openclaw = commands.add_parser(
         "openclaw", help="Manage the optional OpenClaw MCP registration."
     )
-    openclaw_commands = openclaw.add_subparsers(
-        dest="openclaw_command", required=True
-    )
+    openclaw_commands = openclaw.add_subparsers(dest="openclaw_command", required=True)
     openclaw_common = argparse.ArgumentParser(add_help=False)
     openclaw_common.add_argument("--openclaw-executable", type=Path)
     openclaw_common.add_argument("--openclaw-config", type=Path)
@@ -123,6 +120,49 @@ def create_parser(config: AppConfig) -> argparse.ArgumentParser:
     )
     openclaw_restore.add_argument("metadata", type=Path)
     openclaw_restore.add_argument("--force", action="store_true")
+
+    ingestion = commands.add_parser(
+        "ingestion", help="Manage optional media ingestion and Telegram integration."
+    )
+    ingestion_commands = ingestion.add_subparsers(
+        dest="ingestion_command", required=True
+    )
+    ingestion_common = argparse.ArgumentParser(add_help=False)
+    ingestion_common.add_argument("--project-dir", type=Path)
+    ingestion_common.add_argument("--json", action="store_true")
+    ingestion_openclaw = argparse.ArgumentParser(add_help=False)
+    ingestion_openclaw.add_argument("--with-openclaw", action="store_true")
+    ingestion_openclaw.add_argument("--openclaw-executable", type=Path)
+    ingestion_openclaw.add_argument("--openclaw-config", type=Path)
+    ingestion_commands.add_parser(
+        "detect", parents=[ingestion_common], help="Detect ingestion prerequisites."
+    )
+    ingestion_plan = ingestion_commands.add_parser(
+        "plan",
+        parents=[ingestion_common, ingestion_openclaw],
+        help="Preview ingestion installation changes.",
+    )
+    ingestion_install = ingestion_commands.add_parser(
+        "install",
+        parents=[ingestion_common, ingestion_openclaw],
+        help="Apply the reviewed ingestion installation.",
+    )
+    for selected in (ingestion_plan, ingestion_install):
+        selected.add_argument("--install-dependencies", action="store_true")
+        selected.add_argument("--render-systemd", action="store_true")
+        selected.add_argument("--enable-services", action="store_true")
+    ingestion_commands.add_parser(
+        "status",
+        parents=[ingestion_common, ingestion_openclaw],
+        help="Inspect ingestion and optional plugin readiness.",
+    )
+    ingestion_uninstall = ingestion_commands.add_parser(
+        "uninstall",
+        parents=[ingestion_common, ingestion_openclaw],
+        help="Disable integrations while preserving data and credentials.",
+    )
+    ingestion_uninstall.add_argument("--disable-services", action="store_true")
+    ingestion_uninstall.add_argument("--force", action="store_true")
 
     add_rag_commands(commands, config)
     return parser
@@ -251,11 +291,54 @@ def _execute(raw: list[str]) -> int:
             for key, value in result.items():
                 print(f"{key}: {json.dumps(value, ensure_ascii=False)}")
         if (
-            arguments.openclaw_command == "plan"
-            and result.get("action") == "conflict"
-        ) or (
-            arguments.openclaw_command == "status" and not result.get("ready")
-        ):
+            arguments.openclaw_command == "plan" and result.get("action") == "conflict"
+        ) or (arguments.openclaw_command == "status" and not result.get("ready")):
+            return 1
+    elif arguments.command == "ingestion":
+        manager = IngestionManager(config, project_dir=arguments.project_dir)
+        plugin_manager = None
+        if getattr(arguments, "with_openclaw", False):
+            plugin_manager = manager.openclaw_plugin_manager(
+                executable=arguments.openclaw_executable,
+                openclaw_config=arguments.openclaw_config,
+            )
+        if arguments.ingestion_command == "detect":
+            detection = manager.detect()
+            result = {**asdict(detection), "ready": detection.ready}
+        elif arguments.ingestion_command == "plan":
+            result = manager.plan(
+                install_dependencies=arguments.install_dependencies,
+                render_systemd=arguments.render_systemd,
+                enable_services=arguments.enable_services,
+                register_openclaw=arguments.with_openclaw,
+                plugin_manager=plugin_manager,
+            )
+        elif arguments.ingestion_command == "install":
+            result = manager.install(
+                install_dependencies=arguments.install_dependencies,
+                render_systemd=arguments.render_systemd,
+                enable_services=arguments.enable_services,
+                register_openclaw=arguments.with_openclaw,
+                plugin_manager=plugin_manager,
+            )
+        elif arguments.ingestion_command == "status":
+            result = manager.status(
+                inspect_openclaw=arguments.with_openclaw,
+                plugin_manager=plugin_manager,
+            )
+        else:
+            result = manager.uninstall(
+                unregister_openclaw=arguments.with_openclaw,
+                disable_services=arguments.disable_services,
+                force=arguments.force,
+                plugin_manager=plugin_manager,
+            )
+        if arguments.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            for key, value in result.items():
+                print(f"{key}: {json.dumps(value, ensure_ascii=False)}")
+        if arguments.ingestion_command == "status" and not result.get("ready"):
             return 1
     else:
         run_rag_cli(arguments, config)
@@ -272,6 +355,7 @@ def main(argv: list[str] | None = None) -> int:
     except (
         ConfigError,
         EmbeddingError,
+        IngestionError,
         MigrationError,
         OpenClawConflictError,
         OpenClawError,

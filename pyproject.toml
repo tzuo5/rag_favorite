@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rag-favorite"
-version = "1.0.0"
+version = "1.1.0"
 description = "Local-first document and media RAG with a standard MCP interface"
 readme = "README.md"
 requires-python = ">=3.11"

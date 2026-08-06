@@ -123,9 +123,7 @@ def test_status_exposes_configured_collections_without_host_paths(
             "embedding_dimensions": 3,
             "index_version": 3,
             "last_indexed_at": None,
-            "collections": {
-                "one": {"documents": 1, "chunks": 2, "index_version": 3}
-            },
+            "collections": {"one": {"documents": 1, "chunks": 2, "index_version": 3}},
         }
 
     server = create_mcp_server(_config(tmp_path), status_provider=status_provider)

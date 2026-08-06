@@ -11,12 +11,8 @@ MIN_SEARCH_LIMIT = 1
 MAX_SEARCH_LIMIT = 10
 MCP_TOOL_NAMES = ("rag_search", "rag_status")
 
-_HOST_PATH = re.compile(
-    r"(?:/home/[^/\s]+|/Users/[^/\s]+)(?:/[^\s)\]}>\"']*)?"
-)
-_WINDOWS_HOST_PATH = re.compile(
-    r"(?i)\b[A-Z]:\\Users\\[^\\\s]+(?:\\[^\s)\]}>\"']*)?"
-)
+_HOST_PATH = re.compile(r"(?:/home/[^/\s]+|/Users/[^/\s]+)(?:/[^\s)\]}>\"']*)?")
+_WINDOWS_HOST_PATH = re.compile(r"(?i)\b[A-Z]:\\Users\\[^\\\s]+(?:\\[^\s)\]}>\"']*)?")
 
 
 def safe_relative_path(value: object) -> str:

@@ -149,9 +149,7 @@ def create_mcp_server(
                 f"limit must be between {MIN_SEARCH_LIMIT} and {MAX_SEARCH_LIMIT}."
             )
         if knowledge_base not in configured_set:
-            raise ValueError(
-                "knowledge_base must be one of: " + ", ".join(configured)
-            )
+            raise ValueError("knowledge_base must be one of: " + ", ".join(configured))
         extras = additional_knowledge_bases or []
         if not isinstance(extras, list) or any(
             not isinstance(item, str) for item in extras

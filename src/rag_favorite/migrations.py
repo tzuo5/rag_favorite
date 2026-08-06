@@ -43,7 +43,9 @@ def render_migration(sql: str, dimensions: int) -> str:
         raise MigrationError("Embedding dimensions must be positive.")
     marker = "vector(1024)"
     if marker not in sql:
-        raise MigrationError("Initial migration is missing its vector dimension marker.")
+        raise MigrationError(
+            "Initial migration is missing its vector dimension marker."
+        )
     return sql.replace(marker, f"vector({dimensions})", 1)
 
 
@@ -98,7 +100,10 @@ class MigrationRunner:
                             raise MigrationError(
                                 f"Migration checksum changed after application: {version}"
                             )
-                        if previous.embedding_dimensions != self.config.embedding.dimensions:
+                        if (
+                            previous.embedding_dimensions
+                            != self.config.embedding.dimensions
+                        ):
                             raise MigrationError(
                                 "Configured embedding dimensions differ from the installed "
                                 f"schema ({previous.embedding_dimensions})."
@@ -140,8 +145,7 @@ class MigrationRunner:
                 """
             ).fetchall()
             records = tuple(
-                MigrationRecord(str(row[0]), str(row[1]), int(row[2]))
-                for row in rows
+                MigrationRecord(str(row[0]), str(row[1]), int(row[2])) for row in rows
             )
             by_version = {record.version: record for record in records}
             for version in MIGRATIONS:

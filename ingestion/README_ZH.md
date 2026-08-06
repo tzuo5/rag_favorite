@@ -10,6 +10,10 @@
 
 </div>
 
+> 在 rag-favorite 中使用？请先阅读
+> [Phase 5 生命周期文档](../docs/phase-5-ingestion-lifecycle.md)，通过产品级的
+> detect、plan、install、status 和 uninstall 流程完成接入。
+
 ## ✨ 功能特性
 
 - 🎥 **多平台支持**: 支持YouTube、Bilibili、抖音、Apple Podcasts、SoundCloud等30+平台

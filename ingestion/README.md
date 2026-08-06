@@ -10,6 +10,10 @@ An AI-powered tool to transcribe and summarize videos and podcasts — paste a U
 
 </div>
 
+> Using this inside rag-favorite? Start with the
+> [Phase 5 lifecycle guide](../docs/phase-5-ingestion-lifecycle.md) for the
+> product-level detect, plan, install, status, and uninstall workflow.
+
 ## ✨ Features
 
 - 🎥 **Multi-Platform Support**: Works with YouTube, TikTok, Bilibili, Apple Podcasts, SoundCloud, and 30+ more

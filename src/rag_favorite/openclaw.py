@@ -229,18 +229,27 @@ class OpenClawManager:
                     f"OpenClaw already has an unmanaged {SERVER_NAME!r} server. "
                     "Use --replace only after reviewing the existing entry."
                 )
-            action = "install" if current is None else (
-                "update" if self._is_managed(current) else "replace"
+            action = (
+                "install"
+                if current is None
+                else ("update" if self._is_managed(current) else "replace")
             )
             backup = self._create_backup(action)
             try:
                 self._run(
-                    ["mcp", "set", SERVER_NAME, json.dumps(target, separators=(",", ":"))]
+                    [
+                        "mcp",
+                        "set",
+                        SERVER_NAME,
+                        json.dumps(target, separators=(",", ":")),
+                    ]
                 )
                 self._run(["config", "validate", "--json"])
                 probe_ok = self._probe() if probe else None
                 if probe and not probe_ok:
-                    raise OpenClawError("OpenClaw MCP probe returned an invalid tool set.")
+                    raise OpenClawError(
+                        "OpenClaw MCP probe returned an invalid tool set."
+                    )
             except Exception:
                 self._restore_snapshot(backup, validate=True)
                 raise
@@ -313,19 +322,22 @@ class OpenClawManager:
         return tuple(records)
 
     def restore(self, metadata_path: Path, *, force: bool = False) -> dict[str, Any]:
-        self._require_openclaw()
         root = self._backup_root().resolve()
         selected = metadata_path.expanduser().resolve()
         if not selected.is_relative_to(root) or not selected.name.endswith(
             ".metadata.json"
         ):
-            raise OpenClawError("Backup metadata must come from the managed backup directory.")
+            raise OpenClawError(
+                "Backup metadata must come from the managed backup directory."
+            )
         try:
             record = json.loads(selected.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             raise OpenClawError("Unable to read OpenClaw backup metadata.") from exc
         if record.get("schema_version") != BACKUP_SCHEMA_VERSION:
             raise OpenClawError("Unsupported OpenClaw backup metadata version.")
+        component = str(record.get("component") or record.get("server") or SERVER_NAME)
+        self._require_restore_target(component)
         if Path(str(record.get("config_path", ""))).resolve() != self._config_path():
             raise OpenClawError("Backup belongs to a different OpenClaw configuration.")
         with self._installation_lock():
@@ -339,12 +351,16 @@ class OpenClawManager:
                     "only if replacing those later changes is intentional."
                 )
             self._restore_snapshot(selected, validate=True)
-            return {
+            result = {
                 "action": "restore",
-                "server": SERVER_NAME,
+                "component": component,
                 "backup": str(selected),
-                "reload_ok": self._reload(),
             }
+            if component == SERVER_NAME:
+                result.update({"server": SERVER_NAME, "reload_ok": self._reload()})
+            else:
+                result.update({"restart_required": True})
+            return result
 
     def _registration_target(
         self, current: dict[str, Any] | None, *, replace: bool
@@ -372,9 +388,7 @@ class OpenClawManager:
         )
 
     def _show_server(self) -> dict[str, Any] | None:
-        result = self._run(
-            ["mcp", "show", SERVER_NAME, "--json"], check=False
-        )
+        result = self._run(["mcp", "show", SERVER_NAME, "--json"], check=False)
         if result.returncode != 0:
             if "No MCP server named" in result.stderr:
                 return None
@@ -382,7 +396,9 @@ class OpenClawManager:
         try:
             value = json.loads(result.stdout)
         except json.JSONDecodeError as exc:
-            raise OpenClawError("OpenClaw returned invalid MCP configuration data.") from exc
+            raise OpenClawError(
+                "OpenClaw returned invalid MCP configuration data."
+            ) from exc
         if not isinstance(value, dict):
             raise OpenClawError("OpenClaw returned invalid MCP configuration data.")
         return value
@@ -407,9 +423,13 @@ class OpenClawManager:
         if not detection.installed:
             raise OpenClawError("OpenClaw is not installed or is not executable.")
         if not detection.mcp_cli_supported:
-            raise OpenClawError("This OpenClaw version does not provide MCP management.")
+            raise OpenClawError(
+                "This OpenClaw version does not provide MCP management."
+            )
         if not detection.config_exists:
-            raise OpenClawError("OpenClaw configuration is missing; run openclaw onboard.")
+            raise OpenClawError(
+                "OpenClaw configuration is missing; run openclaw onboard."
+            )
         if not detection.product_config_exists:
             raise ConfigError("rag-favorite configuration is missing; run setup first.")
         if not detection.product_mcp_installed:
@@ -423,6 +443,13 @@ class OpenClawManager:
             raise OpenClawError("A compatible OpenClaw installation is required.")
         if not detection.config_exists:
             raise OpenClawError("OpenClaw configuration is missing.")
+
+    def _require_restore_target(self, component: str) -> None:
+        detection = self.detect()
+        if not detection.installed or not detection.config_exists:
+            raise OpenClawError("A configured OpenClaw installation is required.")
+        if component == SERVER_NAME and not detection.mcp_cli_supported:
+            raise OpenClawError("A compatible OpenClaw MCP installation is required.")
 
     def _config_path(self) -> Path:
         if self.openclaw_config_override:
@@ -445,13 +472,15 @@ class OpenClawManager:
     def _backup_root(self) -> Path:
         return self.product_config.paths.state_dir / "openclaw-backups"
 
-    def _create_backup(self, operation: str) -> Path:
+    def _create_backup(self, operation: str, *, component: str = SERVER_NAME) -> Path:
         self._run(["config", "validate", "--json"])
         config_path = self._config_path()
         root = self._backup_root()
         root.mkdir(parents=True, exist_ok=True, mode=0o700)
         root.chmod(0o700)
-        identifier = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:8]
+        identifier = (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:8]
+        )
         snapshot = root / f"{identifier}.openclaw.json"
         source = config_path.read_bytes()
         snapshot.write_bytes(source)
@@ -461,13 +490,15 @@ class OpenClawManager:
             "schema_version": BACKUP_SCHEMA_VERSION,
             "created_at": datetime.now(UTC).isoformat(),
             "operation": operation,
-            "server": SERVER_NAME,
+            "component": component,
             "config_path": str(config_path),
             "snapshot_path": str(snapshot),
             "before_sha256": _sha256_bytes(source),
             "after_sha256": None,
             "product_version": __version__,
         }
+        if component == SERVER_NAME:
+            record["server"] = SERVER_NAME
         self._write_json(metadata, record)
         return metadata
 
@@ -590,7 +621,5 @@ class OpenClawManager:
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise OpenClawError("Unable to run the OpenClaw CLI.") from exc
         if check and result.returncode != 0:
-            raise OpenClawError(
-                f"OpenClaw command failed: {' '.join(arguments[:2])}."
-            )
+            raise OpenClawError(f"OpenClaw command failed: {' '.join(arguments[:2])}.")
         return result

@@ -74,7 +74,9 @@ def _safe_path(path: Path, label: str) -> Path:
     return resolved
 
 
-def _command_runner(command: Sequence[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+def _command_runner(
+    command: Sequence[str], **kwargs: Any
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(command, text=True, check=False, **kwargs)
 
 
@@ -83,8 +85,12 @@ class SetupManager:
         self,
         config_path: Path,
         *,
-        command_runner: Callable[..., subprocess.CompletedProcess[str]] = _command_runner,
-        migration_runner_factory: Callable[[AppConfig], MigrationRunner] = MigrationRunner,
+        command_runner: Callable[
+            ..., subprocess.CompletedProcess[str]
+        ] = _command_runner,
+        migration_runner_factory: Callable[
+            [AppConfig], MigrationRunner
+        ] = MigrationRunner,
         database_connector: Callable[..., Any] = connect_database,
     ) -> None:
         self.config_path = config_path.expanduser().resolve()
@@ -99,7 +105,9 @@ class SetupManager:
                 "preserve" if self.config_path.exists() else "create",
                 str(self.config_path),
             ),
-            SetupCheck("directories", "ensure", "XDG runtime and collection directories"),
+            SetupCheck(
+                "directories", "ensure", "XDG runtime and collection directories"
+            ),
         ]
         if options.start_services:
             checks.append(
@@ -154,15 +162,21 @@ class SetupManager:
                 "created" if created else "preserved",
                 str(config.source),
             ),
-            SetupCheck("directories", "ready", "XDG runtime and collection directories"),
+            SetupCheck(
+                "directories", "ready", "XDG runtime and collection directories"
+            ),
         ]
         if options.start_services:
             compose_file = self._start_services(config)
             results.append(SetupCheck("local-services", "started", str(compose_file)))
             self._wait_for_database(config, options.wait_seconds)
         if options.pull_model:
-            self._compose(config, "exec", "-T", "ollama", "ollama", "pull", config.embedding.model)
-            results.append(SetupCheck("embedding-model", "pulled", config.embedding.model))
+            self._compose(
+                config, "exec", "-T", "ollama", "ollama", "pull", config.embedding.model
+            )
+            results.append(
+                SetupCheck("embedding-model", "pulled", config.embedding.model)
+            )
         applied: tuple[str, ...] = ()
         if options.migrate_database:
             applied = self._migration_runner_factory(config).apply()
@@ -216,7 +230,9 @@ class SetupManager:
                 SetupCheck(
                     "database",
                     "ready" if not missing else "migration-required",
-                    ", ".join(missing) if missing else f"{len(records)} migrations applied",
+                    ", ".join(missing)
+                    if missing
+                    else f"{len(records)} migrations applied",
                 )
             )
         except (OSError, RuntimeError, psycopg.Error) as exc:
@@ -243,8 +259,10 @@ class SetupManager:
             raise ConfigError("Docker is required for --start-services.")
         runtime_dir = self._runtime_dir(config)
         runtime_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
-        compose = resources.files(COMPOSE_RESOURCE_PACKAGE).joinpath("compose.yaml").read_text(
-            encoding="utf-8"
+        compose = (
+            resources.files(COMPOSE_RESOURCE_PACKAGE)
+            .joinpath("compose.yaml")
+            .read_text(encoding="utf-8")
         )
         compose_file = self._compose_file(config)
         compose_file.write_text(compose, encoding="utf-8")
@@ -308,8 +326,13 @@ class SetupManager:
         if not (ingestion_dir / "backend").is_dir():
             raise ConfigError(f"Invalid ingestion directory: {ingestion_dir}")
         if not (ingestion_dir / ".env").is_file():
-            raise ConfigError(f"Missing ingestion environment file: {ingestion_dir / '.env'}")
-        if options.enable_services and not (ingestion_dir / ".venv/bin/python").is_file():
+            raise ConfigError(
+                f"Missing ingestion environment file: {ingestion_dir / '.env'}"
+            )
+        if (
+            options.enable_services
+            and not (ingestion_dir / ".venv/bin/python").is_file()
+        ):
             raise ConfigError(
                 f"Missing ingestion virtual environment: {ingestion_dir / '.venv'}"
             )
@@ -319,7 +342,9 @@ class SetupManager:
         )
         if not openclaw_env.exists():
             openclaw_env.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-            openclaw_env.write_text("# Optional OpenClaw environment\n", encoding="utf-8")
+            openclaw_env.write_text(
+                "# Optional OpenClaw environment\n", encoding="utf-8"
+            )
             openclaw_env.chmod(0o600)
         media_dir = _safe_path(
             options.openclaw_media_dir or config.paths.data_dir / "openclaw-media",
@@ -348,9 +373,7 @@ class SetupManager:
             "@INGESTION_DIR@": str(ingestion_dir),
             "@OPENCLAW_ENV@": str(openclaw_env),
             "@PRODUCT_DATA_DIR@": str(product_data_dir),
-            "@KNOWLEDGE_DIR@": " ".join(
-                str(path) for path in writable_collections
-            ),
+            "@KNOWLEDGE_DIR@": " ".join(str(path) for path in writable_collections),
             "@OPENCLAW_MEDIA_DIR@": str(media_dir),
         }
         root = resources.files(SYSTEMD_RESOURCE_PACKAGE)
@@ -368,9 +391,7 @@ class SetupManager:
     def _systemctl(self, *arguments: str) -> None:
         if not shutil.which("systemctl"):
             raise ConfigError("systemctl is required for --enable-services.")
-        result = self._run(
-            ["systemctl", "--user", *arguments], capture_output=True
-        )
+        result = self._run(["systemctl", "--user", *arguments], capture_output=True)
         if result.returncode:
             detail = (result.stderr or result.stdout or "systemctl failed").strip()
             raise RuntimeError(detail)
@@ -400,9 +421,7 @@ class SetupManager:
         except (OSError, RuntimeError, urllib.error.URLError) as exc:
             return SetupCheck("embedding", "unavailable", str(exc))
 
-    def _write_state(
-        self, config: AppConfig, results: Sequence[SetupCheck]
-    ) -> None:
+    def _write_state(self, config: AppConfig, results: Sequence[SetupCheck]) -> None:
         state_file = config.paths.state_dir / "setup.json"
         payload = {
             "version": __version__,
@@ -421,7 +440,11 @@ class SetupManager:
 
 def print_checks(checks: Sequence[SetupCheck], *, as_json: bool = False) -> None:
     if as_json:
-        print(json.dumps({"checks": [asdict(check) for check in checks]}, ensure_ascii=False))
+        print(
+            json.dumps(
+                {"checks": [asdict(check) for check in checks]}, ensure_ascii=False
+            )
+        )
         return
     for check in checks:
         requirement = "required" if check.required else "optional"

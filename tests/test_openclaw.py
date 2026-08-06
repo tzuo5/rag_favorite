@@ -57,10 +57,14 @@ class FakeOpenClaw:
             self._write_server(json.loads(arguments[3]))
             return self._result(command)
         if arguments[:3] == ["mcp", "probe", "rag-favorite"]:
-            tools = [] if self.fail_probe else [
-                "rag-favorite__rag_search",
-                "rag-favorite__rag_status",
-            ]
+            tools = (
+                []
+                if self.fail_probe
+                else [
+                    "rag-favorite__rag_search",
+                    "rag-favorite__rag_status",
+                ]
+            )
             return self._result(
                 command,
                 stdout=json.dumps({"tools": tools, "diagnostics": []}),
@@ -170,7 +174,9 @@ def test_install_is_probed_backed_up_and_idempotent(
     assert sum(command[1:3] == ["mcp", "set"] for command in runner.commands) == 1
 
 
-def test_install_refuses_unmanaged_collision(tmp_path: Path, monkeypatch: object) -> None:
+def test_install_refuses_unmanaged_collision(
+    tmp_path: Path, monkeypatch: object
+) -> None:
     manager, runner, _config_path = _manager(tmp_path, monkeypatch)
     runner._write_server({"command": "someone-else", "args": []})
 
@@ -194,7 +200,9 @@ def test_probe_failure_rolls_back_exact_config(
     assert config_path.read_bytes() == original
 
 
-def test_uninstall_and_restore_are_targeted(tmp_path: Path, monkeypatch: object) -> None:
+def test_uninstall_and_restore_are_targeted(
+    tmp_path: Path, monkeypatch: object
+) -> None:
     manager, _runner, config_path = _manager(tmp_path, monkeypatch)
     manager.install()
 
