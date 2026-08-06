@@ -7,8 +7,11 @@ installing a unit:
 - `@INGESTION_DIR@`: absolute path to the installed ingestion directory;
 - `@OPENCLAW_ENV@`: absolute path to OpenClaw's optional environment file;
 - `@PRODUCT_DATA_DIR@`: rag-favorite XDG data directory;
-- `@KNOWLEDGE_DIR@`: parent directory containing configured collections;
+- `@KNOWLEDGE_DIR@`: space-separated writable collection directories for the
+  systemd `ReadWritePaths` directive;
 - `@OPENCLAW_MEDIA_DIR@`: OpenClaw media directory.
 
-The Phase 2 setup command will render and install these units. They should not
-be copied directly into systemd before token substitution.
+`rag-favorite setup apply --render-systemd --ingestion-dir /absolute/path`
+renders these units into the user systemd directory. Add `--enable-services`
+only after reviewing the ingestion `.env`. The command never installs
+system-wide units or invokes `sudo`.

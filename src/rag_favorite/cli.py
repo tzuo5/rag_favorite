@@ -4,73 +4,18 @@ from __future__ import annotations
 
 import argparse
 import json
-import secrets
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 from . import __version__
-from .config import AppConfig, ConfigError, load_config, validate_config
+from .bootstrap import initialize_config
+from .config import AppConfig, ConfigError, default_config, load_config, validate_config
 from .embedding import EmbeddingError
-from .paths import AppPaths
+from .migrations import MigrationError
 from .rag import add_rag_commands
 from .rag import run_cli as run_rag_cli
-
-
-def _quote(value: str) -> str:
-    return json.dumps(value, ensure_ascii=False)
-
-
-def _config_template(paths: AppPaths) -> str:
-    rows = [
-        "# rag-favorite local configuration",
-        "",
-        "[database]",
-        'host = "127.0.0.1"',
-        "port = 5432",
-        'name = "ragdb"',
-        'user = "rag_admin"',
-        'credentials_file = "secrets.env"',
-        "",
-        "[embedding]",
-        'url = "http://127.0.0.1:11434/api/embed"',
-        'model = "qwen3-embedding:0.6b"',
-        "dimensions = 1024",
-        "timeout_seconds = 120",
-        "batch_size = 4",
-    ]
-    for collection in load_config().collections.values():
-        rows.extend(
-            [
-                "",
-                "[[collections]]",
-                f"key = {_quote(collection.key)}",
-                f"name = {_quote(collection.name)}",
-                f"path = {_quote(str(paths.knowledge_dir / collection.key))}",
-                f"template = {_quote(collection.template)}",
-            ]
-        )
-    return "\n".join(rows) + "\n"
-
-
-def initialize_config(path: Path, *, force: bool = False) -> None:
-    selected = path.expanduser().resolve()
-    if selected.exists() and not force:
-        raise ConfigError(f"Configuration already exists: {selected}")
-    selected.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    selected.write_text(_config_template(AppPaths.discover()), encoding="utf-8")
-    selected.chmod(0o600)
-    secrets_file = selected.parent / "secrets.env"
-    if not secrets_file.exists():
-        secrets_file.write_text(
-            "RAG_DATABASE_PASSWORD=" + secrets.token_urlsafe(36) + "\n",
-            encoding="utf-8",
-        )
-        secrets_file.chmod(0o600)
-    config = load_config(selected)
-    for collection in config.collections.values():
-        collection.path.mkdir(parents=True, exist_ok=True)
-    print(f"Configuration created: {selected}")
-    print(f"Credentials created: {secrets_file}")
+from .setup import SetupManager, SetupOptions, checks_ready, print_checks
 
 
 def _preparse(argv: list[str]) -> tuple[Path | None, list[str]]:
@@ -105,49 +50,115 @@ def create_parser(config: AppConfig) -> argparse.ArgumentParser:
     list_parser = collection_commands.add_parser("list")
     list_parser.add_argument("--json", action="store_true")
 
+    setup = commands.add_parser(
+        "setup", help="Plan, apply or inspect first-run setup."
+    )
+    setup.add_argument(
+        "setup_action", nargs="?", choices=("plan", "apply", "status"), default="apply"
+    )
+    setup.add_argument("--start-services", action="store_true")
+    setup.add_argument("--pull-model", action="store_true")
+    setup.add_argument("--skip-database", action="store_true")
+    setup.add_argument("--render-systemd", action="store_true")
+    setup.add_argument("--enable-services", action="store_true")
+    setup.add_argument("--ingestion-dir", type=Path)
+    setup.add_argument("--systemd-dir", type=Path)
+    setup.add_argument("--openclaw-env", type=Path)
+    setup.add_argument("--openclaw-media-dir", type=Path)
+    setup.add_argument("--wait-seconds", type=int, default=60)
+    setup.add_argument("--json", action="store_true")
+
     add_rag_commands(commands, config)
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
-    raw = list(sys.argv[1:] if argv is None else argv)
-    selected, _ = _preparse(raw)
-    config = load_config(selected)
+def _load_cli_config(raw: list[str]) -> AppConfig:
+    selected, remaining = _preparse(raw)
+    try:
+        return load_config(selected)
+    except ConfigError:
+        if remaining[:2] != ["config", "init"] or "--force" not in remaining:
+            raise
+        defaults = default_config()
+        source = (selected or defaults.source).expanduser().resolve()
+        return replace(
+            defaults,
+            source=source,
+            database=replace(
+                defaults.database, credentials_file=source.parent / "secrets.env"
+            ),
+        )
+
+
+def _execute(raw: list[str]) -> int:
+    config = _load_cli_config(raw)
     parser = create_parser(config)
     arguments = parser.parse_args(raw)
 
-    try:
-        if arguments.command == "config":
-            if arguments.config_command == "init":
-                initialize_config(config.source, force=arguments.force)
-            elif arguments.config_command == "path":
-                print(config.source)
-            else:
-                validate_config(config)
-                print(f"Configuration is valid: {config.source}")
-        elif arguments.command == "collection":
-            rows = [
-                {
-                    "key": item.key,
-                    "name": item.name,
-                    "path": str(item.path),
-                    "template": item.template,
-                    "read_only": item.read_only,
-                }
-                for item in config.collections.values()
-            ]
-            if arguments.json:
-                print(json.dumps({"collections": rows}, ensure_ascii=False))
-            else:
-                for row in rows:
-                    print(f"{row['key']}\t{row['name']}\t{row['path']}")
+    if arguments.command == "config":
+        if arguments.config_command == "init":
+            initialize_config(config.source, force=arguments.force)
+            print(f"Configuration created: {config.source}")
+            print(f"Credentials created: {config.source.parent / 'secrets.env'}")
+        elif arguments.config_command == "path":
+            print(config.source)
         else:
-            run_rag_cli(arguments, config)
-        return 0
+            validate_config(config)
+            print(f"Configuration is valid: {config.source}")
+    elif arguments.command == "collection":
+        rows = [
+            {
+                "key": item.key,
+                "name": item.name,
+                "path": str(item.path),
+                "template": item.template,
+                "read_only": item.read_only,
+            }
+            for item in config.collections.values()
+        ]
+        if arguments.json:
+            print(json.dumps({"collections": rows}, ensure_ascii=False))
+        else:
+            for row in rows:
+                print(f"{row['key']}\t{row['name']}\t{row['path']}")
+    elif arguments.command == "setup":
+        if arguments.enable_services and not arguments.render_systemd:
+            raise ConfigError("--enable-services requires --render-systemd.")
+        options = SetupOptions(
+            start_services=arguments.start_services,
+            migrate_database=not arguments.skip_database,
+            pull_model=arguments.pull_model,
+            render_systemd=arguments.render_systemd,
+            enable_services=arguments.enable_services,
+            ingestion_dir=arguments.ingestion_dir,
+            systemd_dir=arguments.systemd_dir,
+            openclaw_env=arguments.openclaw_env,
+            openclaw_media_dir=arguments.openclaw_media_dir,
+            wait_seconds=arguments.wait_seconds,
+        )
+        manager = SetupManager(config.source)
+        if arguments.setup_action == "plan":
+            checks = manager.plan(options)
+        elif arguments.setup_action == "status":
+            checks = manager.status()
+        else:
+            checks = manager.apply(options)
+        print_checks(checks, as_json=arguments.json)
+        if arguments.setup_action == "status" and not checks_ready(checks):
+            return 1
+    else:
+        run_rag_cli(arguments, config)
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    raw = list(sys.argv[1:] if argv is None else argv)
+    try:
+        return _execute(raw)
     except KeyboardInterrupt:
         print("Operation cancelled.", file=sys.stderr)
         return 130
-    except (ConfigError, EmbeddingError, RuntimeError, OSError) as exc:
+    except (ConfigError, EmbeddingError, MigrationError, RuntimeError, OSError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 

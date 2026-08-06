@@ -20,7 +20,22 @@ CLI / MCP / optional OpenClaw adapter
         local collection roots
 ```
 
-## Phase 1 portable core
+## First-run setup
+
+After installing the package, preview and apply the idempotent local setup:
+
+```bash
+rag-favorite setup plan
+rag-favorite setup apply --start-services --pull-model
+rag-favorite setup status
+```
+
+The default `apply` uses existing loopback PostgreSQL and Ollama services. The
+`--start-services` option explicitly starts isolated Docker Compose services;
+setup never invokes `sudo`. An offline filesystem-only bootstrap is available
+with `--skip-database`. See the [Phase 2 setup guide](docs/phase-2-first-run-setup.md).
+
+## Portable core
 
 The repository now provides one installable Python package and command:
 

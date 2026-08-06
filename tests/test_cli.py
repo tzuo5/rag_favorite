@@ -32,3 +32,26 @@ path = "research"
     assert main(["--config", str(config_file), "collection", "list", "--json"]) == 0
     output = capsys.readouterr().out
     assert '"key": "research"' in output
+
+
+def test_invalid_config_returns_safe_cli_error(tmp_path: Path, capsys: object) -> None:
+    config_file = tmp_path / "config.toml"
+    config_file.write_text("not valid toml = [", encoding="utf-8")
+
+    assert main(["--config", str(config_file), "setup", "status"]) == 1
+
+    assert "Unable to load configuration" in capsys.readouterr().err
+
+
+def test_config_force_recovers_invalid_file(
+    tmp_path: Path, monkeypatch: object
+) -> None:
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    config_file = tmp_path / "config.toml"
+    config_file.write_text("not valid toml = [", encoding="utf-8")
+
+    assert main(["--config", str(config_file), "config", "init", "--force"]) == 0
+
+    assert "[[collections]]" in config_file.read_text(encoding="utf-8")

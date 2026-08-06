@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rag-favorite"
-version = "0.2.0"
+version = "0.3.0"
 description = "Local-first document and media RAG with a standard MCP interface"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -31,6 +31,14 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+rag_favorite = [
+  "resources/*.yaml",
+  "resources/migrations/*.sql",
+  "resources/systemd/*.service",
+  "resources/systemd/*.timer",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

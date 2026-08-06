@@ -1,0 +1,1 @@
+"""Canonical SQL migration package."""

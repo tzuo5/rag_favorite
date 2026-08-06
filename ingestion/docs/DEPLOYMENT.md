@@ -32,7 +32,7 @@ batch notifications and cleanup:
 ```
 
 The files in `deploy/` are systemd templates. Render every `@TOKEN@` described
-in `deploy/README.md` before installing them. Phase 2 will add an idempotent CLI
+in `deploy/README.md` before installing them. Phase 2 provides an idempotent CLI
 renderer and installer.
 
 ## OpenClaw adapter
