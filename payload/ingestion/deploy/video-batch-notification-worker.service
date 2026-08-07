@@ -1,0 +1,21 @@
+[Unit]
+Description=Telegram video batch notification outbox worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@INGESTION_DIR@
+EnvironmentFile=@INGESTION_DIR@/.env
+EnvironmentFile=-@OPENCLAW_ENV@
+ExecStart=@INGESTION_DIR@/.venv/bin/python -m backend.ingestion.cli batch-notification-worker
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=@INGESTION_DIR@
+
+[Install]
+WantedBy=default.target

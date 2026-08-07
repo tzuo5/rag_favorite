@@ -1,0 +1,12 @@
+[Unit]
+Description=Remove expired video ingestion temporary files
+
+[Service]
+Type=oneshot
+WorkingDirectory=@INGESTION_DIR@
+EnvironmentFile=@INGESTION_DIR@/.env
+ExecStart=@INGESTION_DIR@/.venv/bin/python -m backend.ingestion.cli cleanup
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=@INGESTION_DIR@/temp

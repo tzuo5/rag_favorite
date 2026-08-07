@@ -1,0 +1,17 @@
+{
+  "id": "video-knowledge-ingest",
+  "activation": { "onStartup": true },
+  "name": "Video Knowledge Ingest",
+  "description": "Claims Telegram video links and media, enqueues the deterministic ingestion pipeline, and handles destination buttons.",
+  "contracts": {
+    "tools": ["video_ingestion_capabilities"]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "python": { "type": "string" },
+      "projectDir": { "type": "string" }
+    }
+  }
+}

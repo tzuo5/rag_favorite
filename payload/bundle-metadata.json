@@ -1,0 +1,9 @@
+{
+  "architecture": "arm64",
+  "product": "rag-favorite",
+  "uv_binary_sha256": "f63ec276fa13f8f392542a334c0f58f36833b24304831e5f4c221e2edf7a16f3",
+  "uv_release": "https://github.com/astral-sh/uv/releases/tag/0.11.16",
+  "uv_target": "aarch64-apple-darwin",
+  "uv_version": "0.11.16",
+  "version": "1.2.0"
+}

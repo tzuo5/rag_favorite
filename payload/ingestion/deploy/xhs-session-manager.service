@@ -1,0 +1,25 @@
+[Unit]
+Description=Xiaohongshu persistent session refresh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@INGESTION_DIR@
+EnvironmentFile=@INGESTION_DIR@/.env
+EnvironmentFile=-@OPENCLAW_ENV@
+ExecStart=/usr/bin/xvfb-run -a @INGESTION_DIR@/.venv/bin/python -m backend.xhs_session.cli refresh
+SuccessExitStatus=4
+TimeoutStartSec=7min
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=@PRODUCT_DATA_DIR@/sessions/xiaohongshu @INGESTION_DIR@/secrets
+RestrictSUIDSGID=true
+LockPersonality=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

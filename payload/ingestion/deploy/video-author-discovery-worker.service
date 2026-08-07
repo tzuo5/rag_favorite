@@ -1,0 +1,28 @@
+[Unit]
+Description=Telegram video author discovery worker
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@INGESTION_DIR@
+EnvironmentFile=@INGESTION_DIR@/.env
+EnvironmentFile=-@OPENCLAW_ENV@
+ExecStart=@INGESTION_DIR@/.venv/bin/python -m backend.ingestion.cli discovery-worker
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+Nice=10
+CPUQuota=80%
+MemoryHigh=512M
+MemoryMax=1G
+TasksMax=128
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

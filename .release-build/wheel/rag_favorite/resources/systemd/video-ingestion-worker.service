@@ -1,0 +1,29 @@
+[Unit]
+Description=Telegram video knowledge ingestion worker
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@INGESTION_DIR@
+EnvironmentFile=@INGESTION_DIR@/.env
+EnvironmentFile=-@OPENCLAW_ENV@
+ExecStart=@INGESTION_DIR@/.venv/bin/python -m backend.ingestion.cli worker
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=45
+Nice=10
+CPUQuota=180%
+MemoryHigh=3G
+MemoryMax=4G
+TasksMax=256
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=@INGESTION_DIR@/temp @INGESTION_DIR@/staging @KNOWLEDGE_DIR@ @OPENCLAW_MEDIA_DIR@/inbound
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

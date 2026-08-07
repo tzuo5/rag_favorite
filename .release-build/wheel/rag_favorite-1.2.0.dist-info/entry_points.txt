@@ -1,0 +1,3 @@
+[console_scripts]
+rag-favorite = rag_favorite.cli:main
+rag-favorite-mcp = rag_favorite.mcp_server:main
