@@ -76,6 +76,7 @@ summary-usage.jsonl
 *.mp3
 *.wav
 .xhs-session/
+*.ses
 playwright/.auth/
 
 # Editors / OS
