@@ -545,7 +545,7 @@ def health() -> dict:
             shutil.disk_usage(settings.root).free / 2**30, 2
         ),
         "whisper": {
-            "model": os.getenv("WHISPER_MODEL_SIZE", "base"),
+            "model": os.getenv("WHISPER_MODEL_SIZE", "medium"),
             "device": os.getenv("WHISPER_DEVICE", "cpu"),
             "compute_type": os.getenv("WHISPER_COMPUTE_TYPE", "int8"),
         },

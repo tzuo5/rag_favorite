@@ -228,148 +228,17 @@ class VideoProcessor:
     # ------------------------------------------------------------------
 
     def _parse_vtt(self, filepath: str) -> list:
-        """解析 WebVTT 字幕文件，返回去重后的条目列表。
-
-        特别处理 YouTube 自动字幕的「滚动追加」格式：
-        同一句话会被分成多个 cue 逐字追加，只保留每组的「最终版本」。
-        """
-        raw_entries = []
-        seen_texts: set = set()
-
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                content = f.read()
-        except Exception as e:
-            logger.error(f"读取 VTT 文件失败: {e}")
-            return []
-
-        # 移除 WEBVTT 文件头，按空行分割 cue 块
-        content = re.sub(r"^WEBVTT[^\n]*\n", "", content)
-        blocks = re.split(r"\n{2,}", content.strip())
-
-        for block in blocks:
-            block = block.strip()
-            if not block:
-                continue
-
-            lines = block.split("\n")
-            timing_idx = next((i for i, l in enumerate(lines) if "-->" in l), -1)
-            if timing_idx < 0:
-                continue
-
-            timing_line = lines[timing_idx]
-            text_lines = lines[timing_idx + 1:]
-
-            match = re.match(
-                r"(\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d+)?)\s*-->\s*"
-                r"(\d{1,2}:\d{2}(?::\d{2})?(?:[.,]\d+)?)",
-                timing_line,
-            )
-            if not match:
-                continue
-
-            start_str = self._normalize_time(match.group(1))
-            end_str = self._normalize_time(match.group(2))
-
-            raw_text = " ".join(text_lines)
-            # 去除 HTML / VTT 内联标签（包括 YouTube 逐字时间码标签）
-            text = re.sub(r"<[^>]+>", "", raw_text)
-            text = (
-                text.replace("&amp;", "&")
-                    .replace("&lt;", "<")
-                    .replace("&gt;", ">")
-                    .replace("&nbsp;", " ")
-                    .replace("&#39;", "'")
-                    .replace("&quot;", '"')
-                    .strip()
-            )
-            # 合并行内多余空白
-            text = re.sub(r"\s+", " ", text).strip()
-
-            if not text or text in seen_texts:
-                continue
-
-            seen_texts.add(text)
-            raw_entries.append({"start": start_str, "end": end_str, "text": text})
-
-        # ── 二次去重：过滤 YouTube「滚动追加」的中间状态 ──────────────────
-        # 若条目 i 的文本是条目 i+1 文本的起始子串，则条目 i 是中间状态，丢弃。
-        # 同时丢弃纯空白/单字符的噪音条目。
-        if not raw_entries:
-            return []
-
-        entries = []
-        for i, entry in enumerate(raw_entries):
-            text = entry["text"]
-            if len(text) < 2:
-                continue
-            # 检查后续若干条是否以当前文本开头（滚动追加的特征）
-            is_intermediate = False
-            for j in range(i + 1, min(i + 4, len(raw_entries))):
-                next_text = raw_entries[j]["text"]
-                if next_text.startswith(text) and len(next_text) > len(text):
-                    is_intermediate = True
-                    break
-            if not is_intermediate:
-                entries.append(entry)
-
-        return entries
+        from backend.ingestion.temporal_models import format_time, parse_subtitles
+        with open(filepath, encoding="utf-8") as handle:
+            entries = parse_subtitles(handle.read())
+        return [{**entry, "start": format_time(entry["start"]), "end": format_time(entry["end"])} for entry in entries]
 
     def _parse_srt(self, filepath: str) -> list:
-        """解析 SRT 字幕文件，返回去重后的条目列表。"""
-        entries = []
-        seen_texts: set = set()
-
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                content = f.read()
-        except Exception as e:
-            logger.error(f"读取 SRT 文件失败: {e}")
-            return []
-
-        blocks = re.split(r"\n{2,}", content.strip())
-
-        for block in blocks:
-            lines = block.strip().split("\n")
-            timing_idx = next((i for i, l in enumerate(lines) if "-->" in l), -1)
-            if timing_idx < 0:
-                continue
-
-            timing_line = lines[timing_idx]
-            text_lines = lines[timing_idx + 1:]
-
-            match = re.match(
-                r"(\d{1,2}:\d{2}:\d{2}[.,]\d+)\s*-->\s*(\d{1,2}:\d{2}:\d{2}[.,]\d+)",
-                timing_line,
-            )
-            if not match:
-                continue
-
-            start_str = self._normalize_time(match.group(1))
-            end_str = self._normalize_time(match.group(2))
-
-            text = " ".join(text_lines)
-            text = re.sub(r"<[^>]+>", "", text).strip()
-
-            if not text or text in seen_texts:
-                continue
-
-            seen_texts.add(text)
-            entries.append({"start": start_str, "end": end_str, "text": text})
-
-        return entries
+        return self._parse_vtt(filepath)
 
     def _normalize_time(self, time_str: str) -> str:
-        """将 HH:MM:SS.mmm 或 MM:SS.mmm 统一转为 MM:SS 格式。"""
-        time_str = re.sub(r"[.,]\d+$", "", time_str)
-        parts = time_str.split(":")
-        if len(parts) == 3:
-            h, m, s = int(parts[0]), int(parts[1]), int(parts[2])
-            return f"{h * 60 + m:02d}:{s:02d}"
-        elif len(parts) == 2:
-            m, s = int(parts[0]), int(parts[1])
-            return f"{m:02d}:{s:02d}"
-        return time_str
+        from backend.ingestion.temporal_models import format_time, parse_time
+        return format_time(parse_time(time_str))
 
     def _format_subtitle_entries(self, entries: list, language: str) -> str:
         """将字幕条目格式化为与 Whisper 输出兼容的 Markdown，供下游管道直接使用。"""

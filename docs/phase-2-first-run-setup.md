@@ -9,11 +9,15 @@ workflow. It does not install OpenClaw and it never invokes `sudo`.
 # Read-only preview
 rag-favorite setup plan
 
-# Use existing loopback PostgreSQL and Ollama, then apply schema migrations
+# Use existing loopback PostgreSQL and LM Studio, then apply schema migrations
 rag-favorite setup apply
 
-# Or start isolated local dependencies with Docker Compose
-rag-favorite setup apply --start-services --pull-model
+# Or start PostgreSQL with Docker Compose; start LM Studio separately
+rag-favorite setup apply --start-services
+
+# Inspect local weights, then copy model_digest into [embedding] in config path
+rag-favorite embedding inspect
+rag-favorite config path
 
 # Machine-readable readiness report
 rag-favorite setup status --json
@@ -26,14 +30,19 @@ recorded history.
 
 For an offline filesystem-only bootstrap, use `--skip-database`. This is useful
 while preparing a host, but `setup status` will not report the installation as
-ready until PostgreSQL, the canonical migrations, and the configured Ollama
-model are available.
+ready until PostgreSQL, the canonical migrations, and the configured LM Studio
+embedding model are available and its GGUF digest matches `[embedding].model_digest`.
+A new config reports `model-unpinned` until the operator pins the digest;
+local encoding never falls back to cloud embeddings. Rebuilding and switching
+versioned indexes is documented in the [VideoRAG text Phase 1 record](implementation/videorag-phase-1.md).
 
 ## Managed local services
 
 `--start-services` requires Docker with the Compose plugin. The packaged Compose
-definition binds PostgreSQL and Ollama only to the loopback ports selected in
-the product config. Database credentials are passed to Compose through the
+definition binds PostgreSQL to the loopback port selected in the product
+config. With LM Studio, only the PostgreSQL container is started; use
+`lms load` and `lms server start` separately for models. The explicit Ollama
+provider still supports `--start-services --pull-model`. Database credentials are passed to Compose through the
 child process environment and are not written into the generated Compose file.
 
 The generated runtime definition is stored under:
@@ -42,8 +51,8 @@ The generated runtime definition is stored under:
 ~/.local/state/rag-favorite/runtime/compose.yaml
 ```
 
-Existing databases and Ollama installations remain the default. Starting
-containers is always explicit.
+Existing databases and LM Studio installations remain the default. Starting
+containers is always explicit. See the [LM Studio provider record](implementation/lmstudio-provider.md).
 
 ## Database migrations
 

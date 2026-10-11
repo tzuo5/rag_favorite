@@ -12,7 +12,17 @@ from .config import AppConfig
 from .database import connect_database
 
 MIGRATION_PACKAGE = "rag_favorite.resources.migrations"
-MIGRATIONS = ("0001_document_rag.sql",)
+MIGRATIONS = (
+    "0001_document_rag.sql",
+    "0002_index_generations.sql",
+    "0003_video_knowledge.sql",
+    "0004_xhs_following.sql",
+    "0005_xhs_source_cleanup.sql",
+    "0006_knowledge_summaries.sql",
+    "0007_unified_library.sql",
+    "0008_video_title_dedup.sql",
+    "0009_video_pipeline.sql",
+)
 
 
 class MigrationError(RuntimeError):
@@ -36,11 +46,13 @@ def migration_checksum(sql: str) -> str:
     return hashlib.sha256(sql.encode("utf-8")).hexdigest()
 
 
-def render_migration(sql: str, dimensions: int) -> str:
+def render_migration(sql: str, dimensions: int, *, initial: bool = True) -> str:
     """Render the guarded vector dimension in the initial schema."""
 
     if dimensions <= 0:
         raise MigrationError("Embedding dimensions must be positive.")
+    if not initial:
+        return sql
     marker = "vector(1024)"
     if marker not in sql:
         raise MigrationError(
@@ -110,7 +122,11 @@ class MigrationRunner:
                             )
                         continue
                     connection.execute(
-                        render_migration(source, self.config.embedding.dimensions)
+                        render_migration(
+                            source,
+                            self.config.embedding.dimensions,
+                            initial=version == "0001_document_rag.sql",
+                        )
                     )
                     connection.execute(
                         """

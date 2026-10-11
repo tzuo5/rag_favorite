@@ -1,0 +1,24 @@
+# Separate video profile; keep text embedding in RAG_FAVORITE_CONFIG.
+# Copy into a private runtime directory. Paths resolve relative to this file.
+root = "data"
+credentials_file = "credentials.env" # 0600: RAG_CCR_API_KEY, RAG_ENCODER_TOKEN
+encoder_url = "http://127.0.0.1:9123"
+router_url = "http://127.0.0.1:3456/v1/responses"
+model = "YOUR_CCR_PROVIDER/YOUR_VISION_MODEL"
+visual_enabled = false # Owner opt-in for videos of every topic; no category gate.
+default_collection = "cooking" # Legacy storage key only, not a topic restriction.
+segment_seconds = 30
+failed_media_ttl_hours = 72
+visual_budget_seconds = 0 # No cumulative video-processing deadline.
+silent_frame_interval_seconds = 0.5
+speech_frame_interval_seconds = 1.0 # Includes supplied subtitles.
+visual_max_duration_seconds = 600 # Strictly longer videos skip ALL visual work.
+visual_frames_per_request = 8 # Analyse every sampled frame in restartable batches.
+long_video_segment_seconds = 60 # Videos longer than 180s, to stay within visual budget.
+device = "cuda"
+dtype = "float16" # CPU requires float32; changing dtype changes vector space.
+checkpoint = "../video-encoder/models/imagebind_huge.pth"
+checkpoint_sha256 = "d6f6c22bedcc90708448d5d2fbb7b2db9c73f505dc89bd0b2e09b23af1b62157"
+asr_model = "../video-encoder/asr-medium"
+ffmpeg = "/ABSOLUTE/PATH/TO/ffmpeg"
+max_asset_bytes = 2000000000

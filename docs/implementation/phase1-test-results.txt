@@ -1,0 +1,83 @@
+2026-10-03 America/Chicago
+All model requests fake/mocked; real API/database/FFmpeg acceptance not_run.
+
+core-baseline
+...................................................................      [100%]
+67 passed in 0.74s
+
+ingestion-baseline
+...ssssss...........................................................ssss [ 33%]
+sss.......sssssssssssssssssss........................................... [ 67%]
+......................................................................   [100%]
+182 passed, 32 skipped in 1.47s
+
+core-updated
+........................................................................ [ 87%]
+..........                                                               [100%]
+82 passed in 0.64s
+
+ingestion-updated
+...ssssss...........................................................ssss [ 27%]
+sss.......sssssssssssssssssss........................................... [ 54%]
+........................................................................ [ 82%]
+..............................................                           [100%]
+230 passed, 32 skipped in 1.02s
+
+compat-mcp
+..........................[10/03/26 03:32:38] INFO     execute program                 base_events.py:1760
+                             '/home/tzuo5/rag_favorite/.venv
+                             /bin/python':
+                             <_UnixSubprocessTransport
+                             pid=50703 running
+                             stdin=<_UnixWritePipeTransport
+                             fd=7 idle bufsize=0>
+                             stdout=<_UnixReadPipeTransport
+                             fd=8 polling>>
+[10/03/26 03:32:39] INFO     Processing request of type            server.py:733
+                             ListToolsRequest
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest
+[10/03/26 03:32:39] INFO     <_UnixReadPipeTransport fd=8     unix_events.py:535
+                             polling> was closed by peer
+                    INFO     <_UnixSubprocessTransport    base_subprocess.py:211
+                             pid=50703 running
+                             stdin=<_UnixWritePipeTranspo
+                             rt closed fd=7 closed>
+                             stdout=<_UnixReadPipeTranspo
+                             rt closed fd=8 closed>>
+                             exited with return code 0
+.......................................
+----------------------------------------------------------------------
+Ran 65 tests in 0.472s
+
+OK
+
+compat-cooking
+s..............
+----------------------------------------------------------------------
+Ran 15 tests in 0.003s
+
+OK (skipped=1)
+
+openclaw-node
+✔ declares and registers the read-only capability tool (1.79169ms)
+✔ delivers deterministic acknowledgements before suppressing the model reply (0.720666ms)
+✔ exposes QR login for both authenticated platforms (0.800234ms)
+✔ routes unified work status and controls for every supported workflow (0.228513ms)
+✔ offers every writable knowledge destination with bounded callbacks (0.670026ms)
+✔ preserves all-preview semantics through preview and confirmation (0.694481ms)
+✔ recognizes terse follow-up questions from the real Telegram chat (1.185356ms)
+✔ does not claim unrelated conversation (0.238948ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 68.536162
+
+ruff check src/rag_favorite tests scripts: passed
+ruff F/I new ingestion modules and tests: passed
+compileall src ingestion/backend services scripts: passed
+git diff --check: passed

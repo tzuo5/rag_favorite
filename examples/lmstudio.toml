@@ -1,0 +1,33 @@
+# Load Qwen3-Embedding-0.6B in LM Studio, then run embedding inspect and pin SHA-256.
+[database]
+host = "127.0.0.1"
+port = 5432
+name = "ragdb"
+user = "rag_admin"
+credentials_file = "secrets.env"
+
+[embedding]
+backend = "lmstudio"
+url = "http://127.0.0.1:1234/v1/embeddings"
+model = "text-embedding-qwen3-embedding-0.6b"
+dimensions = 1024
+model_digest = ""
+api_key_env = "LM_API_TOKEN"
+lms_path = ""
+preprocessing_version = "qwen-query-v1"
+normalization = "provider"
+batch_size = 4
+timeout_seconds = 120
+
+[index]
+generation = "active"
+
+[[collections]]
+key = "cooking"
+name = "Cooking"
+path = "knowledge/cooking"
+
+[[collections]]
+key = "tech"
+name = "Technology"
+path = "knowledge/tech"

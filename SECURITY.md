@@ -30,7 +30,15 @@ reporter unless anonymity is requested.
 
 - Product mode restricts PostgreSQL and Ollama endpoints to loopback addresses.
 - Generated credential files and OpenClaw backups are owner-only.
-- The packaged MCP server exposes only read-only retrieval and status tools.
+- The optional web console listens only on loopback behind private Tailscale
+  Serve. It checks the owner identity and an explicit device IP allowlist, then
+  requires a separate password session for queue access and CSRF protection for
+  actions. Do not publish it with Funnel. Same-user local processes and root are
+  trusted; network access rules and device approval require tailnet administration.
+- The legacy packaged MCP server exposes read-only retrieval and status tools.
+  The optional video profile additionally exposes owner-authorized ingestion and
+  favorites synchronization tools, marked as writes; ingestion accepts configured
+  collection names and staged IDs or validated Xiaohongshu URLs, not host paths.
 - OpenClaw is an optional external dependency. Registration changes only the
   named MCP entry and validates, backs up, probes, and rolls back configuration.
 - Media platform adapters process untrusted remote metadata and should run with

@@ -7,8 +7,10 @@ import shutil
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from rag_favorite.embedding import EmbeddingError
 
 from .config import Settings
+from .content_classifier import TranscriptAnalyzer, dispatch_visual
 from .destinations import KnowledgeDestinationService, VectorRepository
 from .discovery.errors import classify_platform_error
 from .discovery.url_classifier import classify_url
@@ -20,6 +22,7 @@ from .media import (
     TranscriptService,
     download_xiaohongshu_cover,
     probe_duration,
+    probe_video_track,
     sha256_file,
 )
 from .models import (
@@ -60,6 +63,8 @@ def requires_batch_persistence_requeue(job: dict) -> bool:
 
 
 def _friendly_error(exc: Exception) -> tuple[str, str]:
+    if isinstance(exc, EmbeddingError):
+        return "INDEX_PENDING", "转录已归档，向量索引暂不可用，正在等待重试。"
     text = str(exc).lower()
     if "private" in text or "内网" in text: return "UNSAFE_URL", "链接指向本机或内网，已拒绝"
     if "duration" in text or "时长" in text: return "DURATION_LIMIT", "视频时长超过限制"
@@ -78,6 +83,8 @@ class VideoIngestionService:
         self.transcripts = TranscriptService(self.settings)
         self.builder = KnowledgeFileBuilder()
         self.enricher = MetadataEnricher()
+        self.analyzer = TranscriptAnalyzer(cache_root=self.settings.cloud_cache_root / "classification",
+            allowed_categories=self.settings.video_visual_allowed_categories)
         self.cleanup = CleanupManager()
         self.destinations = KnowledgeDestinationService(self.settings, VectorRepository(self.settings))
         self.notifier = notifier or TelegramNotifier()
@@ -139,7 +146,7 @@ class VideoIngestionService:
             logger.exception("job failed", extra={"job_id": job_id, "stage": current.get("state"), "error_code": code, "telegram_user_id": job.get("telegram_user_id")})
             retry_count = int(current.get("retry_count") or 0)
             persisting = current.get("state") == "PERSISTING"
-            retryable = code in {"DOWNLOAD_FAILED", "PROCESSING_FAILED"} and retry_count < self.settings.max_retries
+            retryable = code in {"DOWNLOAD_FAILED", "PROCESSING_FAILED", "INDEX_PENDING"} and retry_count < self.settings.max_retries and not getattr(exc, "charge_unknown", False)
             if job.get("notification_mode") == "BATCH_SILENT":
                 await asyncio.to_thread(
                     self._handle_batch_failure,
@@ -447,7 +454,7 @@ class VideoIngestionService:
             self._ensure_batch_can_continue(job)
             self._notify_job(job, "progress", chat_id, "✅ 音频下载完成\n🎙️ 开始使用 Whisper 转写…")
             self.sql.transition(job_id, JobState.TRANSCRIBING)
-            transcript = await self.transcripts.local_transcript(Path(audio))
+            transcript = await self.transcripts.local_transcript(Path(audio), control_check=lambda: self._ensure_batch_can_continue(job))
             self._ensure_batch_can_continue(job)
             self._notify_job(job, "progress", chat_id, "✅ 语音转写完成")
             language = None
@@ -497,7 +504,7 @@ class VideoIngestionService:
             return
         self.sql.transition(job_id, JobState.TRANSCRIBING, media_sha256=media_hash)
         self._notify_job(job, "progress", chat_id, "✅ 媒体文件准备完成\n🎙️ 开始使用 Whisper 转写…")
-        transcript = await self.transcripts.local_transcript(local)
+        transcript = await self.transcripts.local_transcript(local, control_check=lambda: self._ensure_batch_can_continue(job))
         self._ensure_batch_can_continue(job)
         self._notify_job(job, "progress", chat_id, "✅ 语音转写完成")
         await self._stage(job, job_dir, metadata, transcript, media_hash)
@@ -624,7 +631,20 @@ class VideoIngestionService:
         chat_id = str(job["telegram_chat_id"])
         self._notify_job(job, "progress", chat_id, "📝 正在生成摘要、标签和 Markdown…")
         self.sql.transition(job_id, JobState.BUILDING_MARKDOWN)
-        enrichment = await self.enricher.enrich(metadata, transcript)
+        self._ensure_batch_can_continue(job)
+        structured = self.transcripts.structured_result(transcript)
+        analysis = await self.analyzer.analyze(structured, metadata,
+            control_check=lambda: self._ensure_batch_can_continue(job))
+        enrichment = analysis.enrichment
+        self._ensure_batch_can_continue(job)
+        if self.settings.video_visual_enabled and analysis.classification.decision == "eligible":
+            candidates = list(job_dir.glob("source.*"))
+            if candidates:
+                metadata.extra["has_video"] = await asyncio.to_thread(probe_video_track, candidates[0])
+        visual_status = await dispatch_visual(analysis, enabled=self.settings.video_visual_enabled,
+            has_video=metadata.extra.get("has_video"),
+            allowed_categories=self.settings.video_visual_allowed_categories)
+        classification_payload = analysis.model_dump(mode="json", exclude={"enrichment"})
         document_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"video:{metadata.platform.value}:{metadata.source_id or job_id}"))
         cover_filename = (
             f"{safe_filename(enrichment.normalized_title)}"
@@ -640,6 +660,8 @@ class VideoIngestionService:
             telegram_chat_id=str(job["telegram_chat_id"]),
             telegram_message_id=str(job["telegram_message_id"]),
             cover_filename=cover_filename,
+            video_classification=classification_payload,
+            visual_status=visual_status,
         )
         staging = self.builder.staging_path(self.settings.staging_root, job_id, enrichment.normalized_title)
         self.builder.atomic_write(staging, content)
@@ -647,10 +669,16 @@ class VideoIngestionService:
             raise RuntimeError("staging markdown verification failed")
         self._notify_job(job, "progress", chat_id, "✅ Markdown 已生成并通过完整性检查")
         staging_checksum = sha256_file(staging)
+        current_job = self.sql.get_job(job_id) or job
         payload = {
+            **(job.get("metadata") or {}),
+            **(current_job.get("metadata") or {}),
             "source": metadata.model_dump(mode="json"),
             "enrichment": enrichment.model_dump(mode="json"),
             "domain": infer_domain(metadata, enrichment),
+            "video_classification": classification_payload,
+            "visual_status": visual_status,
+            "structured_transcript": structured.model_dump(mode="json"),
             "assets": {
                 "cover_staging_path": str(cover_path),
                 "cover_filename": cover_filename,
@@ -728,7 +756,12 @@ class VideoIngestionService:
                 except OSError:
                     pass
             self._notify_job(job, "progress", chat_id, "🧩 Markdown 已写入，正在 chunking 并生成 embeddings…")
-            self.destinations.vectors.ingest(destination, target)
+            try:
+                self.destinations.vectors.ingest(destination, target)
+            except EmbeddingError:
+                self.sql.transition(job_id, JobState.PERSISTING,
+                    metadata={**(job.get("metadata") or {}), "indexing_status": "index_pending"})
+                raise
             self._notify_job(job, "progress", chat_id, "✅ Chunking 和 embeddings 已完成\n正在登记 SQL 和 pgvector 状态…")
             document_id = self.sql.upsert_document(
                 job, target, persisted_checksum, "completed"

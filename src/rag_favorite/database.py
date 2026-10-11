@@ -29,7 +29,8 @@ def connect_database(
         options=(
             "-c statement_timeout=180000 "
             "-c lock_timeout=10000 "
-            "-c idle_in_transaction_session_timeout=60000"
+            "-c idle_in_transaction_session_timeout=60000 "
+            f"-c search_path={resolved.index.schema},public"
         ),
     )
     if register_pgvector:

@@ -13,7 +13,7 @@
 
 <p align="center">
   <strong>Your media. Your documents. Your searchable knowledge.</strong><br />
-  A local-first RAG pipeline with PostgreSQL + pgvector, Ollama embeddings,<br />
+  A local-first RAG pipeline with PostgreSQL + pgvector, LM Studio embeddings,<br />
   a standard MCP server, and an optional OpenClaw bridge.
 </p>
 
@@ -39,7 +39,7 @@ OpenClaw and does not require a hosted vector database or embedding API.
 | --- | --- |
 | **Document RAG** | Index Markdown and text collections with deterministic, collection-aware retrieval. |
 | **Media ingestion** | Download, transcribe, enrich, and file video/audio from YouTube, Bilibili, and Xiaohongshu workflows. |
-| **Local embeddings** | Use Ollama locally and store vectors in PostgreSQL + pgvector. |
+| **Local embeddings** | Use LM Studio locally and store vectors in PostgreSQL + pgvector. |
 | **Standard MCP** | Expose `rag_search` and `rag_status` through a read-only stdio server. |
 | **OpenClaw adapter** | Detect, plan, install, probe, back up, roll back, and remove an optional local registration. |
 | **Ingestion lifecycle** | Safely prepare media workers and optionally register the Telegram adapter with OpenClaw. |
@@ -48,7 +48,7 @@ OpenClaw and does not require a hosted vector database or embedding API.
 
 ### Designed for trust
 
-- **Local by default** — product mode accepts loopback PostgreSQL and Ollama
+- **Local by default** — product mode accepts loopback PostgreSQL and LM Studio
   endpoints; no hosted service is required.
 - **Read-only agent boundary** — the packaged MCP surface cannot mutate the
   knowledge base.
@@ -73,15 +73,15 @@ rag-favorite --version
 ```
 
 The bundle provisions an isolated Python environment and the complete media
-stack. FFmpeg, PostgreSQL + pgvector, Ollama, and optional OpenClaw remain
+stack. FFmpeg, PostgreSQL + pgvector, LM Studio, and optional OpenClaw remain
 operator-controlled external services. See the [macOS guide](docs/macos.md).
 
 ### Source install
 
 #### 1. Install
 
-Requirements: Python 3.11+, Docker with Compose, and enough disk space for the
-selected Ollama model.
+Requirements: Python 3.11+, Docker with Compose (or existing PostgreSQL),
+LM Studio/llmster, and enough disk space for the selected embedding model.
 
 ```bash
 git clone https://github.com/tzuo5/rag_favorite.git
@@ -95,11 +95,26 @@ python -m pip install -e ".[mcp]"
 
 #### 2. Preview, then apply setup
 
+Download/import Qwen3-Embedding-0.6B in LM Studio first, then load it and start
+the local server. With the model already available, the CLI commands are:
+
+```bash
+lms load text-embedding-qwen3-embedding-0.6b --gpu off --context-length 4096
+lms server start --bind 127.0.0.1 --port 1234
+```
+
 ```bash
 rag-favorite setup plan
-rag-favorite setup apply --start-services --pull-model
-rag-favorite setup status
+rag-favorite setup apply --start-services
+rag-favorite embedding inspect
+rag-favorite config path
 ```
+
+Copy the returned GGUF `model_digest` into `[embedding].model_digest` in the config
+file shown by `config path`, then run `rag-favorite setup status`. A new config
+reports `model-unpinned` until this step is complete; embeddings require the
+installed weights to match that digest. Local requests never fall back to a
+hosted embedding service.
 
 Setup creates an owner-only credential file and the following portable layout:
 
@@ -111,7 +126,12 @@ Setup creates an owner-only credential file and the following portable layout:
 ~/.local/state/rag-favorite/
 ```
 
-Already running PostgreSQL and Ollama on loopback? Omit `--start-services`. For
+Setup manages PostgreSQL; LM Studio is started separately. Ollama remains an
+explicit compatibility provider. See the [LM Studio guide](docs/implementation/lmstudio-provider.md).
+For local ImageBind, asynchronous video import, deletion of owned originals, and
+the five-tool Codex MCP, see the [VideoRAG implementation record](docs/implementation/videorag-phases-0-6.md).
+Telegram is cancelled in this development scope; ordinary text RAG remains compatible.
+Already running PostgreSQL on loopback? Omit `--start-services`. For
 an offline filesystem-only bootstrap, use `--skip-database`.
 
 #### 3. Ingest and search
@@ -131,6 +151,12 @@ key = "research"
 name = "Research Notes"
 path = "~/Documents/research"
 ```
+
+To rebuild without replacing the active index, use `rag-favorite index
+create/build/activate/list`. The [local text Phase 1 record](docs/implementation/videorag-phase-1.md)
+documents the verified generation workflow, rollback, and isolated Linux MVP.
+The [VideoRAG Dev Doc](docs/videorag-dev.md) tracks the later video, remote MCP,
+and independent Telegram work.
 
 ## Connect your tools
 
@@ -200,7 +226,7 @@ flowchart LR
     B[Video / audio] --> I
     C[Telegram] -. optional .-> I
     I --> K[Collection roots]
-    K --> E[Ollama embeddings]
+    K --> E[LM Studio embeddings]
     E --> P[(PostgreSQL + pgvector)]
     P --> R[rag_favorite core]
     R --> CLI[CLI]
@@ -283,3 +309,17 @@ security issues privately as described in [SECURITY.md](SECURITY.md).
 ## License
 
 Apache-2.0 © rag-favorite contributors. See [LICENSE](LICENSE).
+
+
+## Followed Xiaohongshu creators
+
+`bash examples/video_runtime.sh cli import-following` discovers the current account's
+followed creators and backfills accessible video and image notes into the existing
+queue. Discovery uses an exact following-count check, durable author cursors, shared
+source deduplication and queue backpressure. Image notes support local OCR and optional
+vision with image evidence. Daily synchronization and continuation are available through
+`bash examples/video_runtime.sh following-schedule`.
+
+See the [usage and acceptance notes](docs/implementation/xhs-following-ingestion.md)
+and [research and defaults](docs/research/xhs-following-ingestion.md). Discovery and
+media processing have separate completion states; platform access limits remain explicit.

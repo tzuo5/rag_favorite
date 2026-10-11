@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "timestamp": "2026-10-03T19:29:44.992174+00:00",
+  "tools": [
+    "rag_search",
+    "rag_status"
+  ],
+  "generation": "phase1-20261003-45afbc-a",
+  "documents": 4,
+  "single_library_top1": "sauce.md",
+  "explicit_cross_library": "passed",
+  "command": "/home/tzuo5/rag_favorite/.venv/bin/python",
+  "args": [
+    "-m",
+    "rag_favorite.mcp_server"
+  ]
+}

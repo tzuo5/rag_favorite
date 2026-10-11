@@ -1,0 +1,280 @@
+[
+  {
+    "fixture": "cooking",
+    "job_id": "844563fd-bf1d-4730-b453-9b7a0dbf1b08",
+    "state": "complete",
+    "visual_executed": true,
+    "work_dir_exists": false,
+    "segments": 1,
+    "provider_calls": [
+      {
+        "model": "Codex API/gpt-6.1-sol",
+        "images": 0,
+        "seconds": 4.15,
+        "usage": {
+          "attribution": {
+            "items": {
+              "msg_0b12fb3e94909c40016ac202eebaac87d28dd9cdcd61c7cc14": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "content": [
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 31,
+                    "output_tokens": 0
+                  }
+                ],
+                "input_tokens": 31,
+                "output_tokens": 0
+              },
+              "msg_0b12fb3e94909c40016ac202f08d3087d2af4ab048b00177b0": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "content": [
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 2,
+                    "output_tokens": 55
+                  }
+                ],
+                "input_tokens": 2,
+                "output_tokens": 55
+              }
+            },
+            "request_fields": {
+              "instructions": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "input_tokens": 48,
+                "output_tokens": 0
+              }
+            }
+          },
+          "input_tokens": 81,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 55,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 136
+        }
+      },
+      {
+        "model": "Codex API/gpt-6.1-sol",
+        "images": 4,
+        "seconds": 18.353,
+        "usage": {
+          "attribution": {
+            "items": {
+              "msg_088d1df7f397087f016ac202f39bc487d2a4fa6a90db9f3af6": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "content": [
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 30,
+                    "output_tokens": 0
+                  },
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 829,
+                    "output_tokens": 0
+                  },
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 829,
+                    "output_tokens": 0
+                  },
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 829,
+                    "output_tokens": 0
+                  },
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 830,
+                    "output_tokens": 0
+                  }
+                ],
+                "input_tokens": 3347,
+                "output_tokens": 0
+              },
+              "msg_088d1df7f397087f016ac202f4f12887d288ff62e33a59fc34": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "content": [
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 2,
+                    "output_tokens": 553
+                  }
+                ],
+                "input_tokens": 2,
+                "output_tokens": 553
+              }
+            },
+            "request_fields": {
+              "instructions": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "input_tokens": 184,
+                "output_tokens": 0
+              }
+            }
+          },
+          "input_tokens": 3533,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 553,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 4086
+        }
+      }
+    ]
+  },
+  {
+    "fixture": "tech",
+    "job_id": "0c130b04-da64-46bf-b39b-7e620086648a",
+    "state": "complete",
+    "visual_executed": false,
+    "work_dir_exists": false,
+    "segments": 1,
+    "provider_calls": [
+      {
+        "model": "Codex API/gpt-6.1-sol",
+        "images": 0,
+        "seconds": 3.665,
+        "usage": {
+          "attribution": {
+            "items": {
+              "msg_05c0b78395b60b9b016ac20307b4b087d2b69718dcf1a0abe7": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "content": [
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 23,
+                    "output_tokens": 0
+                  }
+                ],
+                "input_tokens": 23,
+                "output_tokens": 0
+              },
+              "rs_05c0b78395b60b9b016ac20308deb087d28adc7cb0c0f70d3f": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "input_tokens": 2,
+                "output_tokens": 19
+              },
+              "msg_05c0b78395b60b9b016ac20309935c87d2ab32f93a8f02efa6": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "content": [
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 0,
+                    "output_tokens": 52
+                  }
+                ],
+                "input_tokens": 0,
+                "output_tokens": 52
+              }
+            },
+            "request_fields": {
+              "instructions": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "input_tokens": 48,
+                "output_tokens": 0
+              }
+            }
+          },
+          "input_tokens": 73,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 71,
+          "output_tokens_details": {
+            "reasoning_tokens": 19
+          },
+          "total_tokens": 144
+        }
+      },
+      {
+        "model": "Codex API/gpt-6.1-sol",
+        "images": 0,
+        "seconds": 9.64,
+        "usage": {
+          "attribution": {
+            "items": {
+              "msg_0836cb1e9e1de326016ac2030b620487d29160ba1dec82e5ec": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "content": [
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 23,
+                    "output_tokens": 0
+                  }
+                ],
+                "input_tokens": 23,
+                "output_tokens": 0
+              },
+              "msg_0836cb1e9e1de326016ac2030c8af087d2ac330ae507cb3a29": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "content": [
+                  {
+                    "cache_write_tokens": 0,
+                    "cached_tokens": 0,
+                    "input_tokens": 2,
+                    "output_tokens": 270
+                  }
+                ],
+                "input_tokens": 2,
+                "output_tokens": 270
+              }
+            },
+            "request_fields": {
+              "instructions": {
+                "cache_write_tokens": 0,
+                "cached_tokens": 0,
+                "input_tokens": 184,
+                "output_tokens": 0
+              }
+            }
+          },
+          "input_tokens": 209,
+          "input_tokens_details": {
+            "cache_write_tokens": 0,
+            "cached_tokens": 0
+          },
+          "output_tokens": 270,
+          "output_tokens_details": {
+            "reasoning_tokens": 0
+          },
+          "total_tokens": 479
+        }
+      }
+    ]
+  }
+]

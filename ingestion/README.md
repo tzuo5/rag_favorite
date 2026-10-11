@@ -191,7 +191,7 @@ AI-Video-Transcriber/
 | `OPENAI_API_KEY` | API key (server-side default) | - | No — can be set in UI instead |
 | `HOST` | Server address | `0.0.0.0` | No |
 | `PORT` | Server port | `8000` | No |
-| `WHISPER_MODEL_SIZE` | Whisper model size | `base` | No |
+| `WHISPER_MODEL_SIZE` | Whisper model size | `medium` | No |
 | `UPLOAD_MAX_MB` | Maximum upload size for local files (MB) | `200` | No |
 
 An optional dedicated endpoint `POST /api/process-upload` exists with the same behavior as sending `file` to `/api/process-video`.

@@ -1,0 +1,95 @@
+{
+  "status": "passed",
+  "timestamp": "2026-10-03T19:24:21.544347+00:00",
+  "elapsed_seconds": 5.548,
+  "model": "qwen3-embedding:0.6b",
+  "model_digest": "ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d",
+  "dimensions": 1024,
+  "queries": [
+    {
+      "generation": "phase1-20261003-45afbc-a",
+      "query": "凉拌料汁生抽老抽醋各几勺？",
+      "collection": "cooking",
+      "top1": "sauce.md",
+      "score": 0.9029156603289257
+    },
+    {
+      "generation": "phase1-20261003-45afbc-a",
+      "query": "如何备份和恢复 PostgreSQL 数据库？",
+      "collection": "tech",
+      "top1": "database.md",
+      "score": 0.8596077645058909
+    },
+    {
+      "generation": "phase1-20261003-45afbc-b",
+      "query": "凉拌料汁生抽老抽醋各几勺？",
+      "collection": "cooking",
+      "top1": "sauce.md",
+      "score": 0.917845862782944
+    },
+    {
+      "generation": "phase1-20261003-45afbc-b",
+      "query": "如何备份和恢复 PostgreSQL 数据库？",
+      "collection": "tech",
+      "top1": "database.md",
+      "score": 0.8680038924203365
+    },
+    {
+      "generation": "phase1-20261003-45afbc-a",
+      "query": "凉拌料汁生抽老抽醋各几勺？",
+      "collection": "cooking",
+      "top1": "sauce.md",
+      "score": 0.9029156603289257
+    },
+    {
+      "generation": "phase1-20261003-45afbc-a",
+      "query": "如何备份和恢复 PostgreSQL 数据库？",
+      "collection": "tech",
+      "top1": "database.md",
+      "score": 0.8596077645058909
+    },
+    {
+      "generation": "phase1-20261003-45afbc-a",
+      "query": "凉拌料汁生抽老抽醋各几勺？",
+      "collection": "cooking",
+      "top1": "sauce.md",
+      "score": 0.9029156603289257
+    },
+    {
+      "generation": "phase1-20261003-45afbc-a",
+      "query": "如何备份和恢复 PostgreSQL 数据库？",
+      "collection": "tech",
+      "top1": "database.md",
+      "score": 0.8596077645058909
+    }
+  ],
+  "active_generation": "phase1-20261003-45afbc-a",
+  "generations": [
+    {
+      "generation": "phase1-20261003-45afbc-a",
+      "space_id": "3c1d6c9a3b31b24a1dc49564b7be9a387a6d3797d388787840f0e3bd9cfe9c92",
+      "state": "ready",
+      "documents_at_build": 4,
+      "model": "qwen3-embedding:0.6b",
+      "backend": "ollama",
+      "dimensions": 1024,
+      "active": true
+    },
+    {
+      "generation": "phase1-20261003-45afbc-b",
+      "space_id": "f6f838b0c80f3f1d17063b7740a14b343bb7962535c59e00e6aa7853557ae43c",
+      "state": "ready",
+      "documents_at_build": 4,
+      "model": "qwen3-embedding:0.6b",
+      "backend": "ollama",
+      "dimensions": 1024,
+      "active": false
+    }
+  ],
+  "network_validation": {
+    "python_non_loopback_tcp": "denied",
+    "denied_probe_count": 1,
+    "allowed_loopback_connections": 63,
+    "note": "Client socket guard; PostgreSQL uses native libpq on loopback. Ollama is configured OLLAMA_NO_CLOUD=1. No system firewall changes."
+  }
+}

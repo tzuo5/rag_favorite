@@ -1,0 +1,28 @@
+# Use an empty development database. Never point this encoder at the old index.
+[database]
+host = "127.0.0.1"
+port = 5432
+name = "rag_video_phase1"
+user = "rag_admin"
+credentials_file = "secrets.env"
+
+[embedding]
+backend = "openrouter"
+url = "https://openrouter.ai/api/v1/embeddings"
+model = "perplexity/pplx-embed-v1-0.6b"
+dimensions = 1024
+timeout_seconds = 60
+batch_size = 4
+api_key_env = "OPENROUTER_API_KEY"
+revision = "1"
+
+[[collections]]
+key = "general"
+name = "General test collection"
+path = "../temp/phase1/knowledge/general"
+
+[[collections]]
+key = "cooking"
+name = "Cooking test collection"
+path = "../temp/phase1/knowledge/cooking"
+template = "cooking"

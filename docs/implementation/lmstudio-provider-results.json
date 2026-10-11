@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "timestamp": "2026-10-03T20:09:42.074891+00:00",
+  "backend": "lmstudio",
+  "active_generation": "lmstudio-20261003-a",
+  "legacy_ollama_rollback": "local-text-a",
+  "restored_lmstudio_search": "database.md",
+  "linux_password_required": false
+}

@@ -1,0 +1,137 @@
+{
+  "timestamp": "2026-10-03T19:29:44.314820+00:00",
+  "status": "passed",
+  "checks": [
+    {
+      "check": "core-real",
+      "command": [
+        "/home/tzuo5/rag_favorite/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "environment": {
+        "PYTHONPATH": "src",
+        "RAG_FAVORITE_INTEGRATION_CONFIG": "/home/tzuo5/rag_favorite/.runtime/phase1/config.toml"
+      }
+    },
+    {
+      "check": "memory-compat",
+      "command": [
+        "/home/tzuo5/rag_favorite/.venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "services/rag-mcp/tests"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "environment": {
+        "PYTHONPATH": "services/rag-mcp:src"
+      }
+    },
+    {
+      "check": "cooking-compat",
+      "command": [
+        "/home/tzuo5/rag_favorite/.venv/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "services/cooking-rag/tests"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "environment": {
+        "PYTHONPATH": "services/cooking-rag:src"
+      }
+    },
+    {
+      "check": "ingestion-regression",
+      "command": [
+        "/home/tzuo5/rag_favorite/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "ingestion/tests/test_video_temporal.py",
+        "ingestion/tests/test_video_cloud.py",
+        "ingestion/tests/test_video_classification.py"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "environment": {
+        "PYTHONPATH": "ingestion:src"
+      }
+    },
+    {
+      "check": "selected-lint",
+      "command": [
+        "/home/tzuo5/rag_favorite/.venv/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "src/rag_favorite",
+        "tests",
+        "examples/phase1_text_mvp.py",
+        "services/cooking-rag/embedding.py",
+        "services/rag-mcp/memory_api/embedding.py",
+        "services/rag-mcp/tests/test_memory_embedding.py"
+      ],
+      "status": "passed",
+      "exit_code": 0,
+      "environment": {
+        "PYTHONPATH": "src"
+      }
+    },
+    {
+      "check": "wheel-and-packaged-migrations",
+      "status": "passed",
+      "exit_code": 0,
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "build",
+        "--wheel",
+        "--outdir",
+        ".runtime/phase1/dist"
+      ],
+      "note": "Both packaged SQL files equal canonical migrations; indexes.py included."
+    },
+    {
+      "check": "runtime-shell-syntax",
+      "status": "passed",
+      "exit_code": 0,
+      "command": [
+        "bash",
+        "-n",
+        "examples/phase1_runtime.sh"
+      ]
+    },
+    {
+      "check": "working-tree-whitespace",
+      "status": "passed",
+      "exit_code": 0,
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ]
+    },
+    {
+      "check": "rag-app-compat",
+      "status": "passed",
+      "exit_code": 0,
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "services/rag-app/tests"
+      ],
+      "result": "5 passed"
+    }
+  ]
+}

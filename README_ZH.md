@@ -13,7 +13,7 @@
 
 <p align="center">
   <strong>把你收藏的文档、视频和音频，变成真正可检索的私人知识库。</strong><br />
-  PostgreSQL + pgvector、Ollama、本地 MCP，以及可选的 OpenClaw 接入。
+  PostgreSQL + pgvector、LM Studio、本地 MCP，以及可选的 OpenClaw 接入。
 </p>
 
 <p align="center">
@@ -38,14 +38,14 @@ OpenClaw，也不要求购买托管向量数据库或 embedding API。
 | --- | --- |
 | **文档 RAG** | 按 collection 索引 Markdown/文本，并进行稳定、可追溯的检索。 |
 | **媒体采集** | 支持 YouTube、哔哩哔哩、小红书工作流中的下载、转写、加工与归档。 |
-| **本地 Embedding** | 使用 Ollama 生成向量，写入 PostgreSQL + pgvector。 |
+| **本地 Embedding** | 使用 LM Studio 生成向量，写入 PostgreSQL + pgvector。 |
 | **标准 MCP** | 通过 stdio 提供只读的 `rag_search` 和 `rag_status`。 |
 | **OpenClaw 适配** | 支持检测、预览、安装、探测、备份、回滚和卸载。 |
 | **采集生命周期** | 安全准备媒体 worker，并可选地向 OpenClaw 注册 Telegram adapter。 |
 | **原生 macOS 发行包** | 提供经过真机 Runner 验证的 Apple Silicon/Intel 包和 launchd worker。 |
 | **安全初始化** | 首次运行可先 plan，再幂等 apply；不会调用 `sudo`。 |
 
-默认安全边界：只接受 loopback PostgreSQL/Ollama；MCP 只读；OpenClaw
+默认安全边界：本地 PostgreSQL/LM Studio 只接受 loopback；MCP 只读；OpenClaw
 修改前自动创建仅所有者可读的校验备份，探测失败会恢复原始配置。
 
 ## 快速开始
@@ -64,12 +64,12 @@ rag-favorite --version
 ```
 
 发行包会自动准备隔离 Python 环境和完整媒体依赖；FFmpeg、PostgreSQL +
-pgvector、Ollama 与可选 OpenClaw 仍由使用者控制。详见
+pgvector、LM Studio 与可选 OpenClaw 仍由使用者控制。详见
 [macOS 安装文档](docs/macos.md)。
 
 ### 源码安装
 
-需要 Python 3.11+、Docker Compose，以及足够存放 Ollama 模型的磁盘空间。
+需要 Python 3.11+、LM Studio/llmster、Docker Compose（或已有 PostgreSQL），以及模型磁盘空间。
 
 ```bash
 git clone https://github.com/tzuo5/rag_favorite.git
@@ -81,15 +81,30 @@ python -m pip install --upgrade pip
 python -m pip install -e ".[mcp]"
 ```
 
-先查看安装计划，再执行：
+先在 LM Studio 下载/导入 Qwen3-Embedding-0.6B。模型已经存在时，可用 CLI 加载并启动本地服务：
+
+```bash
+lms load text-embedding-qwen3-embedding-0.6b --gpu off --context-length 4096
+lms server start --bind 127.0.0.1 --port 1234
+```
+
+再查看项目安装计划并执行：
 
 ```bash
 rag-favorite setup plan
-rag-favorite setup apply --start-services --pull-model
-rag-favorite setup status
+rag-favorite setup apply --start-services
+rag-favorite embedding inspect
+rag-favorite config path
 ```
 
-已有本机 PostgreSQL 和 Ollama 时可以省略 `--start-services`。仅初始化文件、
+将 inspect 返回的 GGUF `model_digest` 写入 config path 所示文件的
+`[embedding].model_digest`，再运行 `rag-favorite setup status`。新配置在固定
+digest 前会报告 `model-unpinned`；编码时实际权重必须与其一致，本地失败不会
+自动切换云端 embedding。
+
+setup 管理 PostgreSQL，LM Studio 单独启动；Ollama 保留为显式兼容 provider。
+详见 [LM Studio 运行记录](docs/implementation/lmstudio-provider.md)。
+已有本机 PostgreSQL 时可以省略 `--start-services`。仅初始化文件、
 暂不连接数据库时使用 `--skip-database`。
 
 导入并检索内容：
@@ -108,6 +123,23 @@ key = "research"
 name = "研究资料"
 path = "~/Documents/research"
 ```
+
+需要保留当前索引并重建时，使用 `rag-favorite index create/build/activate/list`。
+已验证的本地文本代际切换、回退与 Linux 隔离 MVP 见
+[新 Phase 1 实施记录](docs/implementation/videorag-phase-1.md)；视频入库、本地 ImageBind、
+删源检索与 Codex MCP 的阶段进度见 [VideoRAG Dev Doc](docs/videorag-dev.md)。
+Telegram 已按当前目标取消。已部署实例通过 `bash examples/video_runtime.sh status`
+查看，其他 Agent 使用标准 stdio MCP；真实样本与恢复证据见
+[实施记录](docs/implementation/videorag-phases-0-6.md)。
+
+桌面版 [RAG 任务控制台](docs/desktop-gui.md) 可查看真实队列与模型工作状态，
+支持整体及单任务 Start / Stop、搜索、筛选、失败重试和任务日志。
+安装 GUI 依赖后运行 `.venv/bin/python examples/install_desktop_gui.py`，
+双击桌面图标即可打开。Stop 暂停领取新任务，已开始的任务继续完成。
+
+也可部署 [私有网页任务控制台](docs/web-console.md)，通过 Tailscale 私有 HTTPS
+在手机、电脑和本机查看同一队列并执行现有操作。网页含设备白名单与独立密码登录；
+部署后仍需启用 HTTPS 并完成跨设备访问及拒绝访问验收。
 
 ## 接入 MCP
 
@@ -170,7 +202,7 @@ flowchart LR
     B[视频 / 音频] --> I
     C[Telegram] -. 可选 .-> I
     I --> K[知识目录]
-    K --> E[Ollama Embedding]
+    K --> E[LM Studio Embedding]
     E --> P[(PostgreSQL + pgvector)]
     P --> R[rag_favorite 核心]
     R --> CLI[CLI]
@@ -207,3 +239,20 @@ OpenClaw 注册流程视为公开接口；媒体采集适配器可能随上游�
 ## License
 
 Apache-2.0 © rag-favorite contributors，详见 [LICENSE](LICENSE)。
+
+
+## 小红书关注博主导入
+
+在收藏导入之外，可以采集当前账号关注的全部博主，回填可访问的历史视频和图文。
+复用既有队列、视频处理与知识库；图文增加本地 OCR、可选视觉分析及图片证据。
+支持按作者分页恢复、来源去重、队列背压和每天同步。名单必须与主页精确关注数对账；
+不可访问内容和平台限制会明确报告，扫描完成与处理完成分别展示。
+
+```bash
+bash examples/video_runtime.sh cli import-following
+bash examples/video_runtime.sh following-status
+bash examples/video_runtime.sh following-schedule
+```
+
+[使用、状态及验收说明](docs/implementation/xhs-following-ingestion.md) ·
+[调研与全部默认假设](docs/research/xhs-following-ingestion.md)

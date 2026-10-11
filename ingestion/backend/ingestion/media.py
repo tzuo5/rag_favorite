@@ -4,6 +4,8 @@ import asyncio
 import hashlib
 import json
 import logging
+import math
+import os
 import shutil
 import subprocess
 import urllib.error
@@ -120,6 +122,9 @@ class MetadataExtractor:
             from datetime import datetime, timezone
             published = datetime.fromtimestamp(published, timezone.utc).isoformat()
         platform = normalize_platform(extractor, info.get("webpage_url"))
+        formats = info.get("formats") or [info]
+        video_codecs = [item.get("vcodec") for item in formats if isinstance(item, dict)]
+        has_video = True if any(v and v != "none" for v in video_codecs) else False if video_codecs and all(v == "none" for v in video_codecs) else None
         metadata = SourceMetadata(
             platform=platform,
             canonical_url=stable_source_url(info.get("webpage_url") or info.get("original_url") or url, platform.value),
@@ -133,7 +138,7 @@ class MetadataExtractor:
             thumbnail_url=info.get("thumbnail"),
             language=info.get("language"),
             extractor=extractor,
-            extra={"subtitles": sorted((info.get("subtitles") or {}).keys()), "automatic_captions": sorted((info.get("automatic_captions") or {}).keys())},
+            extra={"subtitles": sorted((info.get("subtitles") or {}).keys()), "automatic_captions": sorted((info.get("automatic_captions") or {}).keys()), "has_video": has_video},
         )
         return metadata, info
 
@@ -142,6 +147,7 @@ class TranscriptService:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.video_processor = VideoProcessor()
+        self._structured_results = {}
 
     async def url_transcript(self, url: str, job_dir: Path, metadata: SourceMetadata) -> tuple[str, str | None, bool]:
         subtitle, _, language = await self.video_processor.fetch_subtitles(url, job_dir)
@@ -150,14 +156,32 @@ class TranscriptService:
         audio, _ = await self.video_processor.download_and_convert(url, job_dir, metadata.original_title)
         return await self.local_transcript(Path(audio)), None, False
 
-    async def local_transcript(self, media_path: Path) -> str:
-        from backend.transcriber import Transcriber
-        transcriber = Transcriber()
+    async def local_transcript(self, media_path: Path, *, control_check=None) -> str:
+        result = await self.local_transcript_result(media_path, control_check=control_check)
+        markdown = result.to_markdown()
+        self._structured_results[hashlib.sha256(markdown.encode()).hexdigest()] = result
+        return markdown
+
+    def structured_result(self, markdown: str):
+        from .temporal_models import from_markdown
+        return self._structured_results.pop(hashlib.sha256(markdown.encode()).hexdigest(), None) or from_markdown(markdown)
+
+    async def local_transcript_result(self, media_path: Path, *, control_check=None):
+        if control_check:
+            control_check()
+        if self.settings.video_asr_backend == "openrouter" and not os.getenv("OPENROUTER_API_KEY"):
+            raise ValueError("Missing OpenRouter ASR credential")
         suffix = media_path.suffix.lower()
         audio_path = media_path
         if suffix not in {".wav", ".mp3", ".m4a", ".flac", ".ogg"}:
             audio_path = Path(await self.video_processor.normalize_local_media_to_m4a(media_path, media_path.parent))
-        return await transcriber.transcribe(str(audio_path))
+        if self.settings.video_asr_backend == "openrouter":
+            from .openrouter_asr import OpenRouterASR
+            return await OpenRouterASR(self.settings).transcribe(audio_path, control_check=control_check)
+        if self.settings.video_asr_backend != "whisper":
+            raise ValueError("Unknown ASR backend")
+        from backend.transcriber import Transcriber
+        return await Transcriber().transcribe_result(str(audio_path))
 
 
 def sha256_file(path: Path) -> str:
@@ -173,8 +197,17 @@ def probe_duration(path: Path) -> float | None:
     if result.returncode != 0:
         return None
     try:
-        return float(json.loads(result.stdout)["format"]["duration"])
+        value = float(json.loads(result.stdout)["format"]["duration"])
+        return value if math.isfinite(value) and value >= 0 else None
     except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return None
+
+
+def probe_video_track(path: Path) -> bool | None:
+    try:
+        result = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_type", "-of", "json", str(path)], capture_output=True, text=True, timeout=30, check=True)
+        return bool(json.loads(result.stdout).get("streams"))
+    except (OSError, ValueError, subprocess.SubprocessError):
         return None
 
 

@@ -1,0 +1,134 @@
+{
+  "checks": [
+    {
+      "note_id": "6835dc8d0000000023010673",
+      "parser_reason": "The requested note is unavailable.",
+      "matching_records": [
+        {
+          "has_title": false,
+          "description_chars": 0,
+          "type": null,
+          "has_video": false
+        },
+        {
+          "has_title": false,
+          "description_chars": 164,
+          "type": "video",
+          "has_video": true
+        },
+        {
+          "has_title": false,
+          "description_chars": 164,
+          "type": "video",
+          "has_video": true
+        }
+      ],
+      "page_messages": []
+    },
+    {
+      "note_id": "6a953251000000002a031212",
+      "parser_reason": "The requested note is unavailable.",
+      "matching_records": [
+        {
+          "has_title": false,
+          "description_chars": 0,
+          "type": null,
+          "has_video": false
+        },
+        {
+          "has_title": false,
+          "description_chars": 41,
+          "type": "video",
+          "has_video": true
+        },
+        {
+          "has_title": false,
+          "description_chars": 41,
+          "type": "video",
+          "has_video": true
+        }
+      ],
+      "page_messages": []
+    },
+    {
+      "note_id": "6a7847d5000000003300b7d8",
+      "parser_reason": "The requested note is unavailable.",
+      "matching_records": [
+        {
+          "has_title": false,
+          "description_chars": 0,
+          "type": null,
+          "has_video": false
+        },
+        {
+          "has_title": false,
+          "description_chars": 88,
+          "type": "video",
+          "has_video": true
+        },
+        {
+          "has_title": false,
+          "description_chars": 88,
+          "type": "video",
+          "has_video": true
+        }
+      ],
+      "page_messages": []
+    },
+    {
+      "note_id": "69da06e3000000001a02648a",
+      "parser_reason": "The requested note is unavailable.",
+      "matching_records": [
+        {
+          "has_title": false,
+          "description_chars": 0,
+          "type": null,
+          "has_video": false
+        },
+        {
+          "has_title": false,
+          "description_chars": 103,
+          "type": "video",
+          "has_video": true
+        },
+        {
+          "has_title": false,
+          "description_chars": 103,
+          "type": "video",
+          "has_video": true
+        }
+      ],
+      "page_messages": []
+    }
+  ],
+  "verification_after_fix": [
+    {
+      "job_id": "ad0f6b83-f00a-4523-9dcd-1e6a90ae10dc",
+      "readable_after_fix": true,
+      "content_type": "video",
+      "description_chars": 164,
+      "media_url_present": true
+    },
+    {
+      "job_id": "6caca8a7-783e-4660-ab13-de651a34de5f",
+      "readable_after_fix": true,
+      "content_type": "video",
+      "description_chars": 41,
+      "media_url_present": true
+    },
+    {
+      "job_id": "860b6d86-41d7-42b2-a8e2-5e941e69094b",
+      "readable_after_fix": true,
+      "content_type": "video",
+      "description_chars": 88,
+      "media_url_present": true
+    },
+    {
+      "job_id": "343bb6f9-7ea4-456f-a909-9e1f423775c2",
+      "readable_after_fix": true,
+      "content_type": "video",
+      "description_chars": 103,
+      "media_url_present": true
+    }
+  ]
+}

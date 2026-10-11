@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-04",
+  "scope": "real PG/filesystem; synthetic extraction replay; separate library; no inference quality claim",
+  "live_library_modified": false,
+  "scratch_rows_removed": true,
+  "cases": [
+    {
+      "case": "restart_and_priority",
+      "passed": true,
+      "recovered_running_first": true
+    },
+    {
+      "case": "backfill_lost_receipt",
+      "passed": true,
+      "duplicate_jobs": 0
+    },
+    {
+      "case": "published_cleanup_encoder_offline",
+      "passed": true
+    },
+    {
+      "case": "process_exit_after_delete_before_commit",
+      "passed": true
+    },
+    {
+      "case": "corrupt_evidence_retains_source",
+      "passed": true
+    },
+    {
+      "case": "failed_ttl_and_active_protection",
+      "passed": true
+    },
+    {
+      "case": "attach_transcript_without_redownload",
+      "passed": true
+    },
+    {
+      "case": "explicit_resubmit_after_expiry",
+      "passed": true
+    },
+    {
+      "case": "manual_and_external_sources_unchanged",
+      "passed": true
+    }
+  ]
+}

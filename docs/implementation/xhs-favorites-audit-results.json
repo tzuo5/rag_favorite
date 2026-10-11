@@ -1,0 +1,57 @@
+{
+  "review_scope": "Favorites import, CLI/MCP dispatch, source requests, queue deduplication, nightly scheduling and worker restart. Engineering review with targeted security regressions; no formal repository-wide scan.",
+  "nightly_validation": {
+    "state": "complete",
+    "pages": 21,
+    "submitted": 0,
+    "duplicates": 203,
+    "error_code": null,
+    "updated_at": "2026-10-04T17:43:25.955663+00:00"
+  },
+  "database_job_states": {
+    "blocked": 7,
+    "queued": 181,
+    "running": 1,
+    "complete": 18
+  },
+  "jobs_with_note_id": 205,
+  "timer": {
+    "calendar": "daily 07:00 and 18:00 America/Chicago",
+    "persistent": true,
+    "service_result": "Result=success\nExecMainStatus=0",
+    "next_run": "NextElapseUSecRealtime=Sun 2026-10-04 18:00:00 CDT",
+    "uninstall_reinstall_verified": true
+  },
+  "privacy": {
+    "cookie_owner_only": true,
+    "state_owner_only": true
+  },
+  "verified_checks": [
+    "Owner binding survives completed scans and restart",
+    "Cursor cycles rejected across resumes",
+    "Off-origin/downgrade/port redirects rejected before network",
+    "Private state rejects symbolic links",
+    "Concurrent PostgreSQL submissions create one job",
+    "Manual and favorite URLs share exact note-ID deduplication",
+    "Nightly sync does not revive expired failures",
+    "Queued tokens refresh while running/completed jobs are preserved",
+    "MCP child receives explicit text and video profiles",
+    "Blocked/partial CLI returns nonzero",
+    "Real nightly service completed without adding duplicate jobs",
+    "Login and worker share a browser-profile lock",
+    "MCP profile propagation and scheduler exit codes covered by regression tests",
+    "Reversible timer uninstall/reinstall tested"
+  ],
+  "tests": {
+    "offline_passed": 158,
+    "offline_skipped": 12,
+    "actual_postgres_queue_passed": 4
+  },
+  "limits": [
+    "Reboot was not tested",
+    "Platform login can expire and require owner QR verification",
+    "Image-note OCR is not implemented",
+    "All favorites use requested cooking collection; automatic topic routing is not implemented",
+    "Timer requires powered-on networked host; missed run is caught up after boot"
+  ]
+}

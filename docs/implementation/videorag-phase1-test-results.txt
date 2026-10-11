@@ -1,0 +1,49 @@
+core-real (final isolated-DB safety guard verified)
+........................................................................ [ 70%]
+..............................                                           [100%]
+102 passed in 6.77s
+memory-compat
+...........................[10/03/26 14:21:32] INFO     execute program                 base_events.py:1760
+                             '/home/tzuo5/rag_favorite/.venv
+                             /bin/python':
+                             <_UnixSubprocessTransport
+                             pid=102766 running
+                             stdin=<_UnixWritePipeTransport
+                             fd=7 idle bufsize=0>
+                             stdout=<_UnixReadPipeTransport
+                             fd=8 polling>>
+[10/03/26 14:21:32] INFO     Processing request of type            server.py:733
+                             ListToolsRequest
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest
+                    INFO     <_UnixReadPipeTransport fd=8     unix_events.py:535
+                             polling> was closed by peer
+                    INFO     <_UnixSubprocessTransport    base_subprocess.py:211
+                             pid=102766 running
+                             stdin=<_UnixWritePipeTranspo
+                             rt closed fd=7 closed>
+                             stdout=<_UnixReadPipeTranspo
+                             rt closed fd=8 closed>>
+                             exited with return code 0
+.......................................
+----------------------------------------------------------------------
+Ran 66 tests in 0.345s
+
+OK
+
+cooking-compat
+s..............
+----------------------------------------------------------------------
+Ran 15 tests in 0.002s
+
+OK (skipped=1)
+
+ingestion-regression
+................................................                         [100%]
+48 passed in 0.56s
+
+selected-lint
+All checks passed!
+
+rag-app-compat
+5 passed in 0.05s

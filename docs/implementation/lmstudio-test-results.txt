@@ -1,0 +1,48 @@
+Core + rag-app + real LM Studio/DB
+........................................................................ [ 59%]
+..................................................                       [100%]
+122 passed in 10.60s
+
+Memory compatibility
+...........................[10/03/26 15:06:25] INFO     execute program                 base_events.py:1760
+                             '/home/tzuo5/rag_favorite/.venv
+                             /bin/python':
+                             <_UnixSubprocessTransport
+                             pid=114738 running
+                             stdin=<_UnixWritePipeTransport
+                             fd=7 idle bufsize=0>
+                             stdout=<_UnixReadPipeTransport
+                             fd=8 polling>>
+[10/03/26 15:06:25] INFO     Processing request of type            server.py:733
+                             ListToolsRequest
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest
+                    INFO     <_UnixReadPipeTransport fd=8     unix_events.py:535
+                             polling> was closed by peer
+                    INFO     <_UnixSubprocessTransport    base_subprocess.py:211
+                             pid=114738 running
+                             stdin=<_UnixWritePipeTranspo
+                             rt closed fd=7 closed>
+                             stdout=<_UnixReadPipeTranspo
+                             rt closed fd=8 closed>>
+                             exited with return code 0
+.......................................
+----------------------------------------------------------------------
+Ran 66 tests in 0.406s
+
+OK
+
+Cooking compatibility
+s..............
+----------------------------------------------------------------------
+Ran 15 tests in 0.003s
+
+OK (skipped=1)
+
+Relevant ingestion regression
+................................................                         [100%]
+48 passed in 0.61s
+
+Ruff: passed
+Shell syntax: passed
+Wheel build: passed

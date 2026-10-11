@@ -1,0 +1,37 @@
+{
+  "captured_at": "2026-10-04T13:03:27.621073-05:00",
+  "states": {
+    "blocked": 10,
+    "queued": 174,
+    "running": 1,
+    "complete": 22
+  },
+  "active": [
+    {
+      "title": "没有正反馈时，如何保持极高的执行力？",
+      "stage": "transcript:1/1",
+      "submission_ordinal": 28,
+      "saved_segments": 0,
+      "total_segments": null,
+      "visual_branch_in_saved_segments": false
+    }
+  ],
+  "published": {
+    "segments": 112,
+    "video_vectors": 42,
+    "images": 84,
+    "videos": 22,
+    "visual_videos": 12
+  },
+  "visual_facts": 151,
+  "blocked_errors": {
+    "TRANSCRIPT_REQUIRED_NO_SPEECH": 3,
+    "XHS_LOGIN_EXPIRED_OR_NOTE_UNAVAILABLE": 4,
+    "VISUAL_TIME_BUDGET_EXCEEDED": 2,
+    "CCR_REQUEST_FAILED": 1
+  },
+  "memory": "               total        used        free      shared  buff/cache   available\nMem:            30Gi       8.5Gi        13Gi       631Mi       9.9Gi        21Gi\nSwap:          8.0Gi       2.2Gi       5.8Gi\n",
+  "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU, 6249 MiB, 8188 MiB, 18 %",
+  "gpu_processes": "24192, /home/tzuo5/.lmstudio/.internal/utils/node, 3582 MiB\n108789, /home/tzuo5/gpt projects/rag_favorite/.runtime/video-encoder/venv/bin/python, 2250 MiB",
+  "recovered_import_failures": 41
+}

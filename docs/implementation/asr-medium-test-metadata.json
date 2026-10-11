@@ -1,0 +1,13 @@
+{
+  "source_sha256": "2db83ac071cb63f21c58bc70016273c36a50e0a8e1cca8f8c5ce5769cddb2cd9",
+  "same_source_as_small": true,
+  "asr_model": "/home/tzuo5/gpt projects/rag_favorite/.runtime/video-encoder/asr-medium",
+  "revision": "08e178d48790749d25932bbc082711ddcfdfbc4f",
+  "elapsed_seconds": 18.89,
+  "llm_used": false,
+  "parameters": {
+    "beam_size": 5,
+    "vad_filter": true,
+    "word_timestamps": true
+  }
+}

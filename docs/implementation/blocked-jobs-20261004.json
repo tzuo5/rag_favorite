@@ -1,0 +1,132 @@
+{
+  "snapshot_at": "2026-10-04T13:16:33.217803-05:00",
+  "blocked": [
+    {
+      "job_id": "3aa899a2-bf1e-49ec-8046-dd12619d1eb8",
+      "title": "这样做简单好吃入味",
+      "error_code": "VISUAL_TIME_BUDGET_EXCEEDED",
+      "stage": "failed",
+      "author_note_indexed": false,
+      "current_state": "blocked",
+      "current_stage": "failed",
+      "current_error_code": "VISUAL_TIME_BUDGET_EXCEEDED",
+      "visual_budget_seconds": 600,
+      "confirmed_cause": "视频视觉处理超过单任务时间预算；已完成切片检查点保留。"
+    },
+    {
+      "job_id": "63106943-707f-4a50-afe2-c3d3f14d2c81",
+      "title": "温莎公爵最喜欢，蒙巴顿每次必点的菜",
+      "error_code": "TRANSCRIPT_REQUIRED_NO_SPEECH",
+      "stage": "failed:transcript:1/1",
+      "author_note_indexed": true,
+      "current_state": "complete",
+      "current_stage": "complete",
+      "current_error_code": null,
+      "visual_budget_seconds": 600,
+      "confirmed_cause": "本地 ASR 未检测到语音；旧流程不允许继续画面分析。"
+    },
+    {
+      "job_id": "0a96aef8-0b4e-4966-9c88-503d1c68904c",
+      "title": "两人三餐｜在家给老婆做超下饭的公瑾爆蛋",
+      "error_code": "TRANSCRIPT_REQUIRED_NO_SPEECH",
+      "stage": "failed:transcript:1/1",
+      "author_note_indexed": true,
+      "current_state": "complete",
+      "current_stage": "complete",
+      "current_error_code": null,
+      "visual_budget_seconds": 600,
+      "confirmed_cause": "本地 ASR 未检测到语音；旧流程不允许继续画面分析。"
+    },
+    {
+      "job_id": "ad0f6b83-f00a-4523-9dcd-1e6a90ae10dc",
+      "title": "雪王冰城配方分享|||#配方分享 #配方 #蜜雪冰城 #蜜雪 #蜜雪冰城奶茶 #",
+      "error_code": "XHS_LOGIN_EXPIRED_OR_NOTE_UNAVAILABLE",
+      "stage": "failed:fetch_source",
+      "author_note_indexed": false,
+      "current_state": "complete",
+      "current_stage": "complete",
+      "current_error_code": null,
+      "visual_budget_seconds": 600,
+      "confirmed_cause": "笔记有正文/视频但独立标题为空，旧解析器错误地认为笔记不可用；登录有效。"
+    },
+    {
+      "job_id": "5349109c-2373-42af-8562-faf19be9b3bc",
+      "title": "滑蛋鸡排饭，巨下饭",
+      "error_code": "CCR_REQUEST_FAILED",
+      "stage": "failed:extract:1",
+      "author_note_indexed": false,
+      "current_state": "running",
+      "current_stage": "extract:2",
+      "current_error_code": null,
+      "visual_budget_seconds": 600,
+      "confirmed_cause": "通过 CCR 调用抽取模型时请求失败；不是本地 embedding 失败。保留的记录无法进一步区分网络/HTTP原因。"
+    },
+    {
+      "job_id": "4ee71fc2-51d7-4bf6-8ab5-5716f5f95c8b",
+      "title": "天冷就爱这一口🥣上海家常正宗老上海罗宋汤",
+      "error_code": "TRANSCRIPT_REQUIRED_NO_SPEECH",
+      "stage": "failed:transcript:1/1",
+      "author_note_indexed": true,
+      "current_state": "queued",
+      "current_stage": "queued",
+      "current_error_code": null,
+      "visual_budget_seconds": 600,
+      "confirmed_cause": "本地 ASR 未检测到语音；旧流程不允许继续画面分析。"
+    },
+    {
+      "job_id": "6caca8a7-783e-4660-ab13-de651a34de5f",
+      "title": "外面卖好几十一个的泡芙，咱自己在家就能做，个个都是大空心，又香又酥的，比买的还好",
+      "error_code": "XHS_LOGIN_EXPIRED_OR_NOTE_UNAVAILABLE",
+      "stage": "failed:fetch_source",
+      "author_note_indexed": false,
+      "current_state": "queued",
+      "current_stage": "queued",
+      "current_error_code": null,
+      "visual_budget_seconds": 600,
+      "confirmed_cause": "笔记有正文/视频但独立标题为空，旧解析器错误地认为笔记不可用；登录有效。"
+    },
+    {
+      "job_id": "ea9ce021-a020-4414-a89b-20de00009b1b",
+      "title": "社交场上的潜规则大合集",
+      "error_code": "VISUAL_TIME_BUDGET_EXCEEDED",
+      "stage": "failed:extract:11",
+      "author_note_indexed": false,
+      "current_state": "blocked",
+      "current_stage": "failed:extract:11",
+      "current_error_code": "VISUAL_TIME_BUDGET_EXCEEDED",
+      "visual_budget_seconds": 600,
+      "confirmed_cause": "视频视觉处理超过单任务时间预算；已完成切片检查点保留。"
+    },
+    {
+      "job_id": "860b6d86-41d7-42b2-a8e2-5e941e69094b",
+      "title": "麻辣鲜香，黏黏糊糊真的巨香，在家做美食想放什么就放什么，轻松做出好吃的麻辣拌！#",
+      "error_code": "XHS_LOGIN_EXPIRED_OR_NOTE_UNAVAILABLE",
+      "stage": "failed:fetch_source",
+      "author_note_indexed": false,
+      "current_state": "queued",
+      "current_stage": "queued",
+      "current_error_code": null,
+      "visual_budget_seconds": 600,
+      "confirmed_cause": "笔记有正文/视频但独立标题为空，旧解析器错误地认为笔记不可用；登录有效。"
+    },
+    {
+      "job_id": "343bb6f9-7ea4-456f-a909-9e1f423775c2",
+      "title": "18分钟，创业必修课：普通人如何快速具备创业的基础必备思维➕财商观念，必须看完的",
+      "error_code": "XHS_LOGIN_EXPIRED_OR_NOTE_UNAVAILABLE",
+      "stage": "failed:fetch_source",
+      "author_note_indexed": false,
+      "current_state": "queued",
+      "current_stage": "queued",
+      "current_error_code": null,
+      "visual_budget_seconds": 600,
+      "confirmed_cause": "笔记有正文/视频但独立标题为空，旧解析器错误地认为笔记不可用；登录有效。"
+    }
+  ],
+  "status_updated_at": "2026-10-04T13:23:49.030957-05:00",
+  "current_job_states": {
+    "blocked": 2,
+    "queued": 174,
+    "running": 1,
+    "complete": 30
+  }
+}

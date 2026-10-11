@@ -1,14 +1,18 @@
 # Development MVP：视频视觉知识功能的 Linux 开发计划与验收规格
 
+> **本文为旧阶段规格；后续按 [VideoRAG、本地 embedding 与远程 MCP 修改计划](docs/videorag-local-mcp-plan.md) 的 V0–V6 推进（2026-10-03）。** 下文云端文本/视觉 embedding、OpenClaw 入口依赖和不接入 VideoRAG 的选择不再作为新目标。新目标要求本地双 embedding、独立 Telegram Bot、远程 MCP，成功 import 后删除原视频与临时切片，查询只读取持久化知识与证据。保留既有实施记录与未提交开发，新计划并不表示这些新能力已经完成。
+
+> 最新开发任务与独立 MVP 见 [Dev Doc：七个 Phase 的开发与验收](docs/videorag-dev.md)。新 Phase 0–6 与本文旧 Phase 1–5 不混用。
+
 创建日期：2026-10-01（America/Chicago）。更新：明确当前计划阶段，后续全部实施在 Linux 服务器进行。
 
 项目：rag_favorite。规格依据：[devplan.md](devplan.md) 与 [模型部署/价格调研](docs/research/video-rag-deployment.md)。最新选择为“transcript 先分类、仅 cooking 做视觉增强、文字 LLM 走 CCR/GPT 6 Luna、VLM/画面文字/ASR/两类 embedding 走 OpenRouter、成本优先”。旧本地 OCR/VLM 与 CCR 图片备选路线已由本次修订替代。
 
-**当前状态：planning / planned（计划阶段），尚未开始本文新增功能的代码开发。** 当前产物是需求、模型/费用研究、开发步骤、验收规格与日志模板；所有 Phase 均为 `planned`，所有未执行测试为 `not_run`。本次只更新文档，没有安装依赖或模型、调用付费 API、修改业务代码、迁移数据库或运行测试。
+**当前状态：Phase 1 / in_progress（2026-10-03）。** 已在 Linux 恢复备份、同步产品化代码并完成基础适配与离线回归；真实 CCR/OpenRouter 和隔离 PostgreSQL 验收仍为 `not_run`。Phase 2–5 保持 `planned`。实施事实与限制见 [Linux Phase 1 实施记录](docs/implementation/linux-phase1.md)，待办清单仍用于后续验收，不表示全部实现。
 
 **实施地点：用户的 Linux 服务器。** 从开工准备和 Phase 1 起，代码开发、依赖安装、离线测试、PostgreSQL 实验、CCR/OpenRouter 联调及后续部署都在 Linux 完成。当前 macOS 工作区用于计划整理；其绝对路径、已安装依赖、服务端口和运行结果不作为 Linux 环境事实。
 
-本文中的任务是未来待办；第 10 节目前记录计划修订历史，并预留 Linux 实施日志。任务状态统一使用 planned / in_progress / blocked / implemented / verified；只有具备验收证据才可写 verified。实施时记录真实 Linux 代码版本、环境、命令、结果和报告位置。
+本文中的任务按第 10 节和实施记录推进。任务状态统一使用 planned / in_progress / blocked / implemented / verified；只有具备验收证据才可写 verified。未运行的真实测试保持 not_run。
 
 内容规模：5 个 Phase、44 个开发步骤、分阶段测试/演练矩阵、7 个跨阶段端到端剧本。原任务 IDs 保留，新增云协议、费用和索引空间验收项。每个开发步骤都列出待做功能、目标与验证方式；每个阶段另有 MVP、前置条件、修改落点、验收关口和退出策略。
 
@@ -30,14 +34,14 @@
 
 ### 0.1 计划阶段与 Linux 开工准备
 
-当前只完善规格，以下均为后续待办。完成准备后从 P1-01 开始；Linux 环境准备属于开工前工作，Phase 5 是最终复验与发布阶段。
+2026-10-03 已在 Linux 开始 P1-01 和基础适配；尚未准备的 API、媒体与数据库项目继续按以下清单完成。Phase 5 是最终复验与发布阶段。
 
 | 内容 | 当前状态 | 后续在 Linux 执行 |
 | --- | --- | --- |
 | 需求、模型路线与费用估算 | 已整理，待实测 | 按当前计划实施；API 联调前重新核对模型目录与价格版本 |
-| 新增功能代码与迁移 | planned，未实施 | 从 Phase 1 顺序开发，记录代码与计划版本 |
-| 自动测试、真实基准与账单 | not_run | 在 Linux 逐阶段执行，保留原始结果与费用记录 |
-| 开发环境、访问与目录 | 待确认 | 记录服务器系统、开发用户、仓库根目录、数据库和媒体路径 |
+| 新增功能代码与迁移 | Phase 1 基础适配已实施；无新数据库迁移 | 完成真实联调与隔离库验收后再推进 |
+| 自动测试、真实基准与账单 | 离线回归 passed；真实基准/账单 not_run | 补齐真实模型、媒体和数据库验收 |
+| 开发环境、访问与目录 | 本机环境已记录；CCR/DB/媒体仍待准备 | 见 Linux Phase 1 实施记录 |
 | 发布与运行保障 | planned | Phase 5 使用最终版本复验，随后按小样本上线步骤执行 |
 
 开工清单：
@@ -1199,7 +1203,7 @@ python3 -m ruff check ingestion/backend/ingestion ingestion/tests
 
 ## 10. 开发日志与阶段完成记录
 
-### 10.1 计划修订记录（当前尚无新增功能实施日志）
+### 10.1 计划修订记录（Linux 实施事实见单独报告）
 
 | 日期 | 已实际完成的文档/研究工作 | 产物/证据 | 状态 |
 | --- | --- | --- | --- |
@@ -1214,7 +1218,7 @@ python3 -m ruff check ingestion/backend/ingestion ingestion/tests
 
 | 阶段 | 状态 | 功能完成 | 离线测试 | 真实测试/验收 | 可以进入下一阶段吗 |
 | --- | --- | --- | --- | --- | --- |
-| Phase 1 | planned | 未实施 | not_run | 分类/零视觉调用待验证 | 否 |
+| Phase 1 | in_progress | 基础适配已实施；真实联调和隔离数据库未完成 | passed（详见实施记录） | CCR/OpenRouter/媒体/真实 DB：not_run | 否 |
 | Phase 2 | planned | 未实施 | not_run | ≥10 视频/60 图待验证 | 否 |
 | Phase 3 | planned | 未实施 | not_run | 真实 DB migration/重建待验证 | 否 |
 | Phase 4 | planned | 未实施 | not_run | 真实 Telegram 待验证 | 否 |

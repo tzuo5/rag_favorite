@@ -16,6 +16,10 @@ from .paths import AppPaths
 
 COLLECTION_KEY = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+DEFAULT_QUERY_INSTRUCTION = (
+    "Instruct: Given a user question, retrieve relevant passages "
+    "from a private knowledge base.\nQuery: "
+)
 
 
 class ConfigError(RuntimeError):
@@ -48,11 +52,29 @@ class DatabaseConfig:
 
 @dataclass(frozen=True, slots=True)
 class EmbeddingConfig:
-    url: str = "http://127.0.0.1:11434/api/embed"
-    model: str = "qwen3-embedding:0.6b"
+    url: str = "http://127.0.0.1:1234/v1/embeddings"
+    model: str = "text-embedding-qwen3-embedding-0.6b"
     dimensions: int = 1024
     timeout_seconds: int = 120
     batch_size: int = 4
+    backend: str = "lmstudio"
+    api_key_env: str = "LM_API_TOKEN"
+    revision: str = "1"
+    model_digest: str = ""
+    query_instruction: str = DEFAULT_QUERY_INSTRUCTION
+    preprocessing_version: str = "qwen-query-v1"
+    normalization: str = "provider"
+    num_gpu: int = 0
+    lms_path: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class IndexConfig:
+    generation: str = "active"
+    # Internal resolved snapshot; these fields are never loaded from TOML.
+    schema: str = "public"
+    resolved: bool = False
+    follow_active: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,8 +84,24 @@ class AppConfig:
     database: DatabaseConfig
     embedding: EmbeddingConfig
     collections: Mapping[str, CollectionConfig]
+    index: IndexConfig = IndexConfig()
+    unified: bool = False
+    knowledge_profile: Path | None = None
 
     def collection(self, key: str) -> CollectionConfig:
+        if self.unified and key in {
+            "all",
+            "general",
+            "cooking",
+            "tech",
+            "career",
+            "finance",
+            "social-conduct",
+            "thought-politics",
+            "literature-culture",
+            "legacy",
+        }:
+            return self.collections["general"]
         try:
             return self.collections[key]
         except KeyError as exc:
@@ -149,6 +187,7 @@ def load_config(path: Path | str | None = None) -> AppConfig:
 
     database_raw = _table(raw.get("database"), "database")
     embedding_raw = _table(raw.get("embedding"), "embedding")
+    index_raw = _table(raw.get("index"), "index")
     base = selected.parent
     credentials_value = database_raw.get("credentials_file", "secrets.env")
     database = DatabaseConfig(
@@ -159,12 +198,58 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         credentials_file=_expand_path(credentials_value, base=base),
     )
     embedding_defaults = EmbeddingConfig()
+    backend = str(
+        embedding_raw.get(
+            "backend",
+            "ollama"
+            if str(embedding_raw.get("url", "")).endswith("/api/embed")
+            else embedding_defaults.backend,
+        )
+    )
+    provider_defaults = {
+        "lmstudio": (embedding_defaults.url, embedding_defaults.model),
+        "ollama": ("http://127.0.0.1:11434/api/embed", "qwen3-embedding:0.6b"),
+        "openrouter": (
+            "https://openrouter.ai/api/v1/embeddings",
+            "perplexity/pplx-embed-v1-0.6b",
+        ),
+    }.get(backend, (embedding_defaults.url, embedding_defaults.model))
     embedding = EmbeddingConfig(
-        url=str(embedding_raw.get("url", embedding_defaults.url)),
-        model=str(embedding_raw.get("model", embedding_defaults.model)),
+        url=str(
+            embedding_raw.get(
+                "url",
+                provider_defaults[0],
+            )
+        ),
+        model=str(
+            embedding_raw.get(
+                "model",
+                provider_defaults[1],
+            )
+        ),
         dimensions=int(embedding_raw.get("dimensions", 1024)),
         timeout_seconds=int(embedding_raw.get("timeout_seconds", 120)),
         batch_size=int(embedding_raw.get("batch_size", 4)),
+        backend=backend,
+        api_key_env=str(
+            embedding_raw.get(
+                "api_key_env",
+                "LM_API_TOKEN" if backend == "lmstudio" else "OPENROUTER_API_KEY",
+            )
+        ),
+        revision=str(embedding_raw.get("revision", "1")),
+        model_digest=str(embedding_raw.get("model_digest", "")).removeprefix("sha256:"),
+        query_instruction=str(
+            embedding_raw.get("query_instruction", embedding_defaults.query_instruction)
+        ),
+        preprocessing_version=str(
+            embedding_raw.get("preprocessing_version", "qwen-query-v1")
+        ),
+        normalization=str(embedding_raw.get("normalization", "provider")),
+        num_gpu=int(embedding_raw.get("num_gpu", 0)),
+        lms_path=str(_expand_path(embedding_raw["lms_path"], base=base))
+        if embedding_raw.get("lms_path")
+        else "",
     )
 
     collection_rows = raw.get("collections")
@@ -196,19 +281,66 @@ def load_config(path: Path | str | None = None) -> AppConfig:
         database=database,
         embedding=embedding,
         collections=collections,
+        index=IndexConfig(generation=str(index_raw.get("generation", "active"))),
+        unified=bool(raw.get("knowledge", {}).get("unified", False)),
+        knowledge_profile=_expand_path(raw["knowledge"]["video_config"], base=base)
+        if raw.get("knowledge", {}).get("video_config")
+        else None,
     )
     validate_config(config)
     return config
 
 
 def validate_config(config: AppConfig) -> None:
+    if not COLLECTION_KEY.fullmatch(config.index.generation):
+        raise ConfigError("Index generation must be a lowercase identifier.")
+    if not re.fullmatch(r"[a-z][a-z0-9_]{0,62}", config.index.schema):
+        raise ConfigError("Resolved index schema is invalid.")
     if config.database.host not in LOOPBACK_HOSTS:
         raise ConfigError("Database host must be loopback-only in local mode.")
     if not 1 <= config.database.port <= 65535:
         raise ConfigError("Database port must be between 1 and 65535.")
     parsed = urlparse(config.embedding.url)
-    if parsed.scheme != "http" or parsed.hostname not in LOOPBACK_HOSTS:
+    if config.embedding.backend not in {"lmstudio", "ollama", "openrouter"}:
+        raise ConfigError("Embedding backend must be lmstudio, ollama or openrouter.")
+    if config.embedding.backend in {"lmstudio", "ollama"} and (
+        parsed.scheme != "http"
+        or parsed.hostname not in LOOPBACK_HOSTS
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+        or parsed.path
+        != (
+            "/v1/embeddings" if config.embedding.backend == "lmstudio" else "/api/embed"
+        )
+    ):
         raise ConfigError("Embedding URL must use HTTP on a loopback host.")
+    if config.embedding.backend == "openrouter" and (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ConfigError(
+            "OpenRouter embedding URL must use HTTPS without credentials or query parameters."
+        )
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", config.embedding.api_key_env):
+        raise ConfigError("Embedding API key environment name is invalid.")
+    if not config.embedding.model.strip() or not config.embedding.revision.strip():
+        raise ConfigError("Embedding model and revision must be non-empty.")
+    if config.embedding.model_digest and not re.fullmatch(
+        r"[a-f0-9]{64}", config.embedding.model_digest
+    ):
+        raise ConfigError("Embedding model_digest must be a SHA-256 digest.")
+    if not config.embedding.preprocessing_version.strip():
+        raise ConfigError("Embedding preprocessing_version must be non-empty.")
+    if config.embedding.normalization not in {"provider", "l2"}:
+        raise ConfigError("Embedding normalization must be provider or l2.")
+    if config.embedding.num_gpu < 0:
+        raise ConfigError("Embedding num_gpu must be non-negative; use 0 for CPU.")
     if config.embedding.dimensions <= 0:
         raise ConfigError("Embedding dimensions must be positive.")
     if config.embedding.timeout_seconds <= 0 or config.embedding.batch_size <= 0:

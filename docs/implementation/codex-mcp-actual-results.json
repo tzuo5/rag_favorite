@@ -1,0 +1,51 @@
+[
+  {
+    "client": "actual-codex-cli",
+    "server": "rag-favorite",
+    "tool": "rag_status",
+    "status": "completed",
+    "error": null
+  },
+  {
+    "client": "actual-codex-cli",
+    "server": "rag-favorite",
+    "tool": "rag_search",
+    "status": "completed",
+    "error": null
+  },
+  {
+    "client": "actual-codex-cli",
+    "server": "rag-favorite-video",
+    "tool": "rag_status",
+    "status": "completed",
+    "error": null
+  },
+  {
+    "client": "actual-codex-cli",
+    "server": "rag-favorite-video",
+    "tool": "video_import",
+    "status": "completed",
+    "error": null
+  },
+  {
+    "client": "actual-codex-cli",
+    "server": "rag-favorite-video",
+    "tool": "ingestion_status",
+    "status": "completed",
+    "error": null
+  },
+  {
+    "client": "actual-codex-cli",
+    "server": "rag-favorite-video",
+    "tool": "rag_search",
+    "status": "completed",
+    "error": null
+  },
+  {
+    "client": "actual-codex-cli",
+    "server": "rag-favorite-video",
+    "tool": "evidence_get",
+    "status": "completed",
+    "error": null
+  }
+]

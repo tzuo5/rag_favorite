@@ -1,0 +1,96 @@
+{
+  "status": "passed",
+  "timestamp": "2026-10-03T20:06:32.906961+00:00",
+  "elapsed_seconds": 8.77,
+  "model": "text-embedding-qwen3-embedding-0.6b",
+  "backend": "lmstudio",
+  "model_digest": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+  "dimensions": 1024,
+  "queries": [
+    {
+      "generation": "lmstudio-20261003-a",
+      "query": "凉拌料汁生抽老抽醋各几勺？",
+      "collection": "cooking",
+      "top1": "sauce.md",
+      "score": 0.9025287897148372
+    },
+    {
+      "generation": "lmstudio-20261003-a",
+      "query": "如何备份和恢复 PostgreSQL 数据库？",
+      "collection": "tech",
+      "top1": "database.md",
+      "score": 0.8595716017356996
+    },
+    {
+      "generation": "lmstudio-20261003-b",
+      "query": "凉拌料汁生抽老抽醋各几勺？",
+      "collection": "cooking",
+      "top1": "sauce.md",
+      "score": 0.9167943646434344
+    },
+    {
+      "generation": "lmstudio-20261003-b",
+      "query": "如何备份和恢复 PostgreSQL 数据库？",
+      "collection": "tech",
+      "top1": "database.md",
+      "score": 0.8692256808280945
+    },
+    {
+      "generation": "lmstudio-20261003-a",
+      "query": "凉拌料汁生抽老抽醋各几勺？",
+      "collection": "cooking",
+      "top1": "sauce.md",
+      "score": 0.9025287897148372
+    },
+    {
+      "generation": "lmstudio-20261003-a",
+      "query": "如何备份和恢复 PostgreSQL 数据库？",
+      "collection": "tech",
+      "top1": "database.md",
+      "score": 0.8595716017356996
+    },
+    {
+      "generation": "lmstudio-20261003-a",
+      "query": "凉拌料汁生抽老抽醋各几勺？",
+      "collection": "cooking",
+      "top1": "sauce.md",
+      "score": 0.9025287897148372
+    },
+    {
+      "generation": "lmstudio-20261003-a",
+      "query": "如何备份和恢复 PostgreSQL 数据库？",
+      "collection": "tech",
+      "top1": "database.md",
+      "score": 0.8595716017356996
+    }
+  ],
+  "active_generation": "lmstudio-20261003-a",
+  "generations": [
+    {
+      "generation": "lmstudio-20261003-a",
+      "space_id": "ecaa29d4d2bf10f4667534e9a6b51b6867a46ff82c9a683278e38182f67a392b",
+      "state": "ready",
+      "documents_at_build": 4,
+      "model": "text-embedding-qwen3-embedding-0.6b",
+      "backend": "lmstudio",
+      "dimensions": 1024,
+      "active": true
+    },
+    {
+      "generation": "lmstudio-20261003-b",
+      "space_id": "5f8c6adddecda53fd07dae4c2fbc0480325bb513b7834172922dc847742ed91a",
+      "state": "ready",
+      "documents_at_build": 4,
+      "model": "text-embedding-qwen3-embedding-0.6b",
+      "backend": "lmstudio",
+      "dimensions": 1024,
+      "active": false
+    }
+  ],
+  "network_validation": {
+    "python_non_loopback_tcp": "denied",
+    "denied_probe_count": 1,
+    "allowed_loopback_connections": 63,
+    "note": "Client socket guard; PostgreSQL uses native libpq on loopback. Local model inventory and pinned weights are checked. No system firewall changes."
+  }
+}

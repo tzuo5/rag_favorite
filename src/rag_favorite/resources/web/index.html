@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#111c27">
+  <title>RAG 任务控制台</title>
+  <link rel="stylesheet" href="/assets/console.css">
+  <script defer src="/assets/console.js"></script>
+</head>
+<body>
+  <main>
+    <header><div><p class="eyebrow">私有任务控制台</p><h1>RAG 任务进度</h1></div><button id="logout" hidden>退出登录</button></header>
+    <p id="notice" role="status" aria-live="polite">正在连接…</p>
+    <section id="login-panel" class="panel" hidden>
+      <h2>登录你的控制台</h2>
+      <p class="muted">仅已授权设备可访问，登录后查看及控制任务。</p>
+      <form id="login-form">
+        <label>用户名<input id="username" name="username" value="admin" autocomplete="username" required maxlength="100"></label>
+        <label>密码<input id="password" name="password" type="password" autocomplete="current-password" required maxlength="256"></label>
+        <button class="primary" type="submit">登录</button>
+      </form>
+    </section>
+    <div id="dashboard" hidden>
+      <section id="counts" class="stats" aria-label="队列统计"></section>
+      <section class="panel"><h2>四阶段流水线</h2><div id="pipeline" class="stats"></div><p id="pipeline-status" class="muted"></p></section>
+      <section class="panel">
+        <div class="section-head"><div><h2>队列控制</h2><p id="worker" class="muted"></p></div><div class="actions"><button id="start" class="primary">Start · 恢复队列</button><button id="stop" class="danger">Stop · 暂停队列</button></div></div>
+        <p class="muted">Stop 暂停领取新任务，已开始的任务继续完成；Start 不会自动重试失败任务。</p>
+        <p id="freshness" class="muted"></p>
+      </section>
+      <section class="panel"><h2>模型与调用</h2><p id="call-metrics" class="muted"></p><div id="models" class="models"></div><details><summary>最近调用</summary><div id="model-calls" class="jobs"></div></details><p class="muted">调用率统计最近 24 小时保留的 CCR 请求；完整 JSON 仍需通过内容证据校验，发布后才计入可检索完成。</p></section>
+      <section class="panel">
+        <div class="section-head"><h2>任务队列</h2><span id="result-count" class="muted"></span></div>
+        <div class="filters">
+          <label>搜索<input id="search" type="search" placeholder="标题、任务 ID、错误码"></label>
+          <label>状态<select id="state-filter"><option value="">全部</option><option value="running">运行中</option><option value="queued">等待中</option><option value="paused">已暂停</option><option value="complete">已完成</option><option value="duplicate">已合并</option><option value="published">清理中</option><option value="blocked">受阻</option><option value="failed">失败</option></select></label>
+          <label>分类<select id="collection-filter"><option value="">全部分类</option></select></label>
+        </div>
+        <p class="muted">进度表示当前阶段的实际帧数或片段数，不代表整个任务的完成百分比。</p>
+        <div id="jobs" class="jobs"></div>
+        <div class="pagination"><button id="previous">上一页</button><span id="page-label"></span><button id="next">下一页</button></div>
+      </section>
+      <section class="panel"><h2>任务日志</h2><pre id="logs"></pre></section>
+    </div>
+  </main>
+</body>
+</html>

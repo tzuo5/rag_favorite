@@ -68,6 +68,8 @@ class KnowledgeFileBuilder:
         telegram_chat_id: str,
         telegram_message_id: str,
         cover_filename: str | None = None,
+        video_classification: dict | None = None,
+        visual_status: dict | None = None,
     ) -> tuple[str, str]:
         body = transcript_body(transcript)
         checksum = hashlib.sha256(body.replace("\r\n", "\n").encode("utf-8")).hexdigest()
@@ -87,6 +89,10 @@ class KnowledgeFileBuilder:
         }
         if cover_filename:
             frontmatter["cover_image"] = cover_filename
+        if video_classification is not None:
+            frontmatter["video_classification"] = video_classification
+        if visual_status is not None:
+            frontmatter["visual_status"] = visual_status
         source_url = metadata.canonical_url or "无"
         cover = f"![[{cover_filename}]]\n\n" if cover_filename else ""
         platform_label = (

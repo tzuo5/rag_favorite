@@ -1,5 +1,4 @@
 import os
-from faster_whisper import WhisperModel
 import logging
 from typing import Optional
 
@@ -23,7 +22,7 @@ class Transcriber:
         Args:
             model_size: Whisper模型大小 (tiny, base, small, medium, large)
         """
-        self.model_size = model_size or os.getenv("WHISPER_MODEL_SIZE", "base")
+        self.model_size = model_size or os.getenv("WHISPER_MODEL_SIZE", "medium")
         self.device = device or os.getenv("WHISPER_DEVICE", "cpu")
         self.compute_type = compute_type or os.getenv("WHISPER_COMPUTE_TYPE", "int8")
         self.cpu_threads = cpu_threads or int(os.getenv("WHISPER_CPU_THREADS", "2"))
@@ -35,6 +34,7 @@ class Transcriber:
     def _load_model(self):
         """延迟加载模型"""
         if self.model is None:
+            from faster_whisper import WhisperModel
             logger.info(f"正在加载Whisper模型: {self.model_size}")
             try:
                 self.model = WhisperModel(
@@ -50,6 +50,9 @@ class Transcriber:
                 raise Exception(f"模型加载失败: {str(e)}")
     
     async def transcribe(self, audio_path: str, language: Optional[str] = None) -> str:
+        return (await self.transcribe_result(audio_path, language)).to_markdown()
+
+    async def transcribe_result(self, audio_path: str, language: Optional[str] = None):
         """
         转录音频文件
         
@@ -66,14 +69,15 @@ class Transcriber:
                 raise Exception(f"音频文件不存在: {audio_path}")
             
             # 加载模型
-            self._load_model()
+            import asyncio
+            await asyncio.to_thread(self._load_model)
             
             logger.info(f"开始转录音频: {audio_path}")
             
             # 直接调用会阻塞事件循环；放入线程避免阻塞
-            import asyncio
+            from backend.ingestion.temporal_models import TranscriptResult, TranscriptSegment, segment_id
             def _do_transcribe():
-                return self.model.transcribe(
+                segments, info = self.model.transcribe(
                     audio_path,
                     language=language,
                     beam_size=self.beam_size,
@@ -91,6 +95,7 @@ class Transcriber:
                     # 避免错误累积导致的连环重复
                     condition_on_previous_text=False
                 )
+                return list(segments), info
             segments, info = await asyncio.to_thread(_do_transcribe)
             
             detected_language = info.language
@@ -99,27 +104,9 @@ class Transcriber:
             logger.info(f"语言检测概率: {info.language_probability:.2f}")
             
             # 组装转录结果
-            transcript_lines = []
-            transcript_lines.append("# Video Transcription")
-            transcript_lines.append("")
-            transcript_lines.append(f"**Detected Language:** {detected_language}")
-            transcript_lines.append(f"**Language Probability:** {info.language_probability:.2f}")
-            transcript_lines.append("")
-            transcript_lines.append("## Transcription Content")
-            transcript_lines.append("")
-            
-            # 添加时间戳和文本
-            for segment in segments:
-                start_time = self._format_time(segment.start)
-                end_time = self._format_time(segment.end)
-                text = segment.text.strip()
-                
-                transcript_lines.append(f"**[{start_time} - {end_time}]**")
-                transcript_lines.append("")
-                transcript_lines.append(text)
-                transcript_lines.append("")
-            
-            transcript_text = "\n".join(transcript_lines)
+            transcript_text = TranscriptResult(language=detected_language, language_probability=info.language_probability, timing_precision="segment",
+                segments=[TranscriptSegment(id=segment_id(i, s.text.strip(), s.start, s.end),
+                    text=s.text.strip(), start=s.start, end=s.end) for i, s in enumerate(segments)])
             logger.info("转录完成")
             
             return transcript_text
@@ -138,14 +125,8 @@ class Transcriber:
         Returns:
             格式化的时间字符串
         """
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        seconds = int(seconds % 60)
-        
-        if hours > 0:
-            return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-        else:
-            return f"{minutes:02d}:{seconds:02d}"
+        from backend.ingestion.temporal_models import format_time
+        return format_time(seconds)
     
     def get_supported_languages(self) -> list:
         """

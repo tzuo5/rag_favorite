@@ -11,7 +11,13 @@ from pathlib import Path
 from . import __version__
 from .bootstrap import initialize_config
 from .config import AppConfig, ConfigError, default_config, load_config, validate_config
-from .embedding import EmbeddingError
+from .embedding import EmbeddingError, client_from_config, embedding_space_id
+from .indexes import (
+    activate_generation,
+    build_generation,
+    create_generation,
+    list_generations,
+)
 from .ingestion import IngestionError, IngestionManager
 from .mcp_support import (
     client_config,
@@ -48,6 +54,25 @@ def create_parser(config: AppConfig) -> argparse.ArgumentParser:
     init.add_argument("--force", action="store_true")
     config_commands.add_parser("path", help="Print the active configuration path.")
     config_commands.add_parser("validate", help="Validate the active configuration.")
+
+    embedding = commands.add_parser(
+        "embedding", help="Inspect the local model before pinning its digest."
+    )
+    embedding.add_argument("embedding_action", choices=("inspect",))
+    index = commands.add_parser(
+        "index", help="Build and switch isolated index generations."
+    )
+    index_commands = index.add_subparsers(dest="index_action", required=True)
+    index_commands.add_parser("list")
+    for action in ("create", "build", "activate"):
+        item = index_commands.add_parser(action)
+        item.add_argument("generation")
+        if action == "activate":
+            item.add_argument(
+                "--allow-stale",
+                action="store_true",
+                help="Explicitly restore an older verified snapshot.",
+            )
 
     collection = commands.add_parser(
         "collection", help="Inspect configured collections."
@@ -204,6 +229,50 @@ def _execute(raw: list[str]) -> int:
         else:
             validate_config(config)
             print(f"Configuration is valid: {config.source}")
+    elif arguments.command == "embedding":
+        if config.embedding.backend not in {"lmstudio", "ollama"}:
+            raise ConfigError(
+                "embedding inspect is for local LM Studio or Ollama models."
+            )
+        payload = client_from_config(config).inspect_model()
+        pinned = replace(config.embedding, model_digest=str(payload["model_digest"]))
+        payload["space_id"] = embedding_space_id(pinned)
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    elif arguments.command == "index":
+        if config.unified:
+            from . import unified_library
+            from .video_config import load_video_config
+
+            video = load_video_config(config.knowledge_profile)
+            if arguments.index_action == "list":
+                payload = {
+                    "generations": unified_library.list_generations(config, video)
+                }
+            elif arguments.index_action == "create":
+                unified_library.create_generation(config, video, arguments.generation)
+                payload = {"generation": arguments.generation, "state": "building"}
+            elif arguments.index_action == "build":
+                payload = unified_library.build_generation(
+                    config, video, arguments.generation
+                )
+            else:
+                payload = unified_library.activate_built_generation(
+                    config,
+                    video,
+                    arguments.generation,
+                    allow_stale=arguments.allow_stale,
+                )
+        elif arguments.index_action == "list":
+            payload = {"generations": list_generations(config)}
+        elif arguments.index_action == "create":
+            payload = create_generation(config, arguments.generation)
+        elif arguments.index_action == "build":
+            payload = build_generation(config, arguments.generation)
+        else:
+            payload = activate_generation(
+                config, arguments.generation, allow_stale=arguments.allow_stale
+            )
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
     elif arguments.command == "collection":
         rows = [
             {

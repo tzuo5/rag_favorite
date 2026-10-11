@@ -1,0 +1,52 @@
+{
+  "status": "passed",
+  "timestamp": "2026-10-03T19:22:30.172064+00:00",
+  "restart": "Both user-owned services stopped and started; verified from a new shell after the start command exited.",
+  "checks": [
+    {
+      "command": [
+        "bash",
+        "examples/phase1_runtime.sh",
+        "status"
+      ],
+      "output": "pg_ctl: server is running (PID: 102887)\n/home/tzuo5/rag_favorite/.runtime/phase1/postgres/usr/lib/postgresql/18/bin/postgres \"-D\" \"/home/tzuo5/rag_favorite/.runtime/phase1/pgdata\" \"-p\" \"55432\" \"-h\" \"127.0.0.1\" \"-k\" \"/home/tzuo5/rag_favorite/.runtime/phase1\"\n{\"version\":\"0.32.0\"}"
+    },
+    {
+      "command": [
+        ".venv/bin/rag-favorite",
+        "--config",
+        ".runtime/phase1/config.toml",
+        "doctor"
+      ],
+      "output": "PostgreSQL pgvector: 0.8.1\nEmbedding provider/model: ollama/qwen3-embedding:0.6b\nReturned dimensions: 1024\nRAG dependencies are healthy.\n"
+    }
+  ],
+  "active_generation": "phase1-20261003-079c84-a",
+  "documents": 4,
+  "query_top1": "sauce.md",
+  "loaded_models": {
+    "models": [
+      {
+        "name": "qwen3-embedding:0.6b",
+        "model": "qwen3-embedding:0.6b",
+        "size": 2371270737,
+        "digest": "ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "qwen3",
+          "families": [
+            "qwen3"
+          ],
+          "parameter_size": "595.78M",
+          "quantization_level": "Q8_0"
+        },
+        "expires_at": "2026-10-03T14:27:30.161536827-05:00",
+        "size_vram": 0,
+        "context_length": 4096
+      }
+    ]
+  },
+  "initial_migration_sha256": "8948302560843e96107ab513a294126b51bcd26a76edc110a3072076d6946340",
+  "linux_password_required": false
+}

@@ -3,13 +3,13 @@ from __future__ import annotations
 import json
 import plistlib
 import subprocess
-from io import BytesIO
 from pathlib import Path
-from typing import Self
 
 import pytest
 
 from rag_favorite.cli import main
+from rag_favorite.config import default_config
+from rag_favorite.embedding import EmbeddingError
 from rag_favorite.migrations import (
     MigrationRecord,
     load_migration,
@@ -234,18 +234,14 @@ def test_setup_status_detects_missing_embedding_model(
                 ),
             )
 
-    class Response(BytesIO):
-        status = 200
-
-        def __enter__(self) -> Self:
-            return self
-
-        def __exit__(self, *_args: object) -> None:
-            return None
+    def unavailable(_self):
+        raise EmbeddingError(
+            "Configured LM Studio embedding model is not loaded uniquely."
+        )
 
     monkeypatch.setattr(
-        "rag_favorite.setup.urllib.request.urlopen",
-        lambda *_args, **_kwargs: Response(b'{"models": []}'),
+        "rag_favorite.setup.LMStudioEmbeddingClient.inspect_model",
+        unavailable,
     )
     manager = SetupManager(
         config_file,
@@ -257,3 +253,18 @@ def test_setup_status_detects_missing_embedding_model(
     assert next(check for check in checks if check.name == "embedding").status == (
         "model-missing"
     )
+
+
+def test_lmstudio_setup_starts_only_database_and_rejects_ollama_pull(
+    tmp_path, monkeypatch
+):
+    _xdg_environment(monkeypatch, tmp_path)
+    manager = SetupManager(tmp_path / "config.toml")
+    config = default_config()
+    calls = []
+    monkeypatch.setattr("rag_favorite.setup.shutil.which", lambda _name: "/bin/docker")
+    monkeypatch.setattr(manager, "_compose", lambda _config, *args: calls.append(args))
+    manager._start_services(config)
+    assert calls == [("up", "-d", "postgres")]
+    with pytest.raises(RuntimeError, match="only for Ollama"):
+        manager.plan(SetupOptions(start_services=True, pull_model=True))

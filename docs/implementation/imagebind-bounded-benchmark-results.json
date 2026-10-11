@@ -1,0 +1,39 @@
+{
+  "fixture": "synthetic red frame with digit 2; not cooking corpus",
+  "cpu_microbatch": {
+    "space_id": "112b89bf4a75be2f43995ab96e13b843908c38631c3deeb78a39424a6f240fac",
+    "seconds": 11.417,
+    "loads": 1,
+    "load_seconds": 8.015,
+    "device": "cpu",
+    "dtype": "float32",
+    "cuda_peak_bytes": 0,
+    "views": 15
+  },
+  "cpu_full_batch_seconds": 11.094,
+  "gpu_microbatch": {
+    "space_id": "8b98ad677fa05e5097ce7bc14e526945220d05020b1a54d6f2a925dd8f9b35c3",
+    "seconds": 0.607,
+    "loads": 1,
+    "load_seconds": 8.568,
+    "device": "cuda",
+    "dtype": "float16",
+    "cuda_peak_bytes": 1994516480,
+    "views": 15
+  },
+  "views": [
+    1,
+    15,
+    3,
+    2,
+    224,
+    224
+  ],
+  "cpu_full_vs_micro_max_abs": 2.9802322387695312e-08,
+  "cpu_full_vs_micro_cosine": 0.9999999403953552,
+  "cpu_fp32_vs_gpu_fp16_cosine": 0.9999986290931702,
+  "cpu_peak_rss_bytes": 10110013440,
+  "blocked_non_loopback_tcp": [
+    "192.0.2.1"
+  ]
+}

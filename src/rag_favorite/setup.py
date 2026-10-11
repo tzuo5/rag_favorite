@@ -25,6 +25,8 @@ from . import __version__
 from .bootstrap import ensure_directories, initialize_config
 from .config import AppConfig, ConfigError, database_credentials, load_config
 from .database import connect_database
+from .embedding import EmbeddingError, LMStudioEmbeddingClient
+from .indexes import resolve_index
 from .migrations import MIGRATIONS, MigrationRunner
 
 SYSTEMD_RESOURCE_PACKAGE = "rag_favorite.resources.systemd"
@@ -145,6 +147,11 @@ class SetupManager:
 
     def plan(self, options: SetupOptions) -> tuple[SetupCheck, ...]:
         self._validate_service_options(options)
+        config = load_config(self.config_path)
+        if options.pull_model and config.embedding.backend != "ollama":
+            raise ConfigError(
+                "--pull-model is only for Ollama. Use lms get/import and lms load for LM Studio."
+            )
         checks = [
             SetupCheck(
                 "configuration",
@@ -160,7 +167,9 @@ class SetupManager:
                 SetupCheck(
                     "local-services",
                     "start",
-                    "PostgreSQL/pgvector and Ollama via Docker Compose",
+                    "PostgreSQL/pgvector and Ollama via Docker Compose"
+                    if config.embedding.backend == "ollama"
+                    else "PostgreSQL/pgvector via Docker Compose; use existing model provider",
                 )
             )
         else:
@@ -168,7 +177,7 @@ class SetupManager:
                 SetupCheck(
                     "local-services",
                     "external",
-                    "use existing loopback PostgreSQL and Ollama",
+                    f"use existing loopback PostgreSQL and {config.embedding.backend}",
                     required=False,
                 )
             )
@@ -219,6 +228,10 @@ class SetupManager:
                 "directories", "ready", "XDG runtime and collection directories"
             ),
         ]
+        if options.pull_model and config.embedding.backend != "ollama":
+            raise ConfigError(
+                "--pull-model is only for Ollama. Use lms get/import and lms load for LM Studio."
+            )
         if options.start_services:
             compose_file = self._start_services(config)
             results.append(SetupCheck("local-services", "started", str(compose_file)))
@@ -297,7 +310,10 @@ class SetupManager:
             )
         except (OSError, RuntimeError, psycopg.Error) as exc:
             checks.append(SetupCheck("database", "unavailable", str(exc)))
-        checks.append(self._embedding_status(config))
+        try:
+            checks.append(self._embedding_status(resolve_index(config)))
+        except (OSError, RuntimeError, psycopg.Error):
+            checks.append(self._embedding_status(config))
         checks.append(
             SetupCheck(
                 "ffmpeg",
@@ -327,7 +343,12 @@ class SetupManager:
         compose_file = self._compose_file(config)
         compose_file.write_text(compose, encoding="utf-8")
         compose_file.chmod(0o600)
-        self._compose(config, "up", "-d", "postgres", "ollama")
+        services = (
+            ("postgres", "ollama")
+            if config.embedding.backend == "ollama"
+            else ("postgres",)
+        )
+        self._compose(config, "up", "-d", *services)
         return compose_file
 
     def _compose(self, config: AppConfig, *arguments: str) -> None:
@@ -339,7 +360,9 @@ class SetupManager:
                 "RAG_DATABASE_USER": credentials["user"],
                 "RAG_DATABASE_PASSWORD": credentials["password"],
                 "RAG_DATABASE_PORT": str(config.database.port),
-                "RAG_OLLAMA_PORT": str(urlparse(config.embedding.url).port or 11434),
+                "RAG_OLLAMA_PORT": str(urlparse(config.embedding.url).port or 11434)
+                if config.embedding.backend == "ollama"
+                else "11434",
             }
         )
         command = [
@@ -595,6 +618,38 @@ class SetupManager:
             raise RuntimeError(detail)
 
     def _embedding_status(self, config: AppConfig) -> SetupCheck:
+        if config.embedding.backend == "lmstudio":
+            try:
+                metadata = LMStudioEmbeddingClient(config.embedding).inspect_model()
+                if not config.embedding.model_digest:
+                    return SetupCheck(
+                        "embedding",
+                        "model-unpinned",
+                        "Run embedding inspect and pin the GGUF SHA-256.",
+                    )
+                if metadata["model_digest"] != config.embedding.model_digest:
+                    return SetupCheck(
+                        "embedding",
+                        "space-mismatch",
+                        "LM Studio weights differ from the pinned encoder.",
+                    )
+                return SetupCheck("embedding", "ready", config.embedding.model)
+            except EmbeddingError as exc:
+                return SetupCheck(
+                    "embedding",
+                    "model-missing" if "not loaded" in str(exc) else "unavailable",
+                    str(exc),
+                )
+        if config.embedding.backend == "openrouter":
+            import os
+
+            return SetupCheck(
+                "embedding",
+                "configured-unverified"
+                if os.getenv(config.embedding.api_key_env)
+                else "credential-missing",
+                config.embedding.model,
+            )
         parsed = urlparse(config.embedding.url)
         tags_url = f"{parsed.scheme}://{parsed.netloc}/api/tags"
         try:
@@ -614,6 +669,30 @@ class SetupManager:
                     "embedding",
                     "model-missing",
                     f"Run setup apply --start-services --pull-model for {config.embedding.model}",
+                )
+            if not config.embedding.model_digest:
+                return SetupCheck(
+                    "embedding",
+                    "model-unpinned",
+                    "Run embedding inspect and pin [embedding].model_digest before indexing.",
+                )
+            match = next(
+                (
+                    m
+                    for m in payload["models"]
+                    if m.get("name") == config.embedding.model
+                    or m.get("model") == config.embedding.model
+                ),
+                {},
+            )
+            if (
+                str(match.get("digest", "")).removeprefix("sha256:")
+                != config.embedding.model_digest
+            ):
+                return SetupCheck(
+                    "embedding",
+                    "space-mismatch",
+                    "Installed model digest differs from the pinned encoder.",
                 )
             return SetupCheck("embedding", "ready", config.embedding.model)
         except (OSError, RuntimeError, urllib.error.URLError) as exc:
@@ -656,5 +735,8 @@ def checks_ready(checks: Sequence[SetupCheck]) -> bool:
         "migration-required",
         "model-missing",
         "unavailable",
+        "model-unpinned",
+        "space-mismatch",
+        "credential-missing",
     }
     return not any(check.required and check.status in failures for check in checks)

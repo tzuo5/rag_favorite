@@ -191,7 +191,7 @@ AI-Video-Transcriber/
 | `OPENAI_API_KEY` | API密钥（服务端默认值） | - | 否，可在UI中配置 |
 | `HOST` | 服务器地址 | `0.0.0.0` | 否 |
 | `PORT` | 服务器端口 | `8000` | 否 |
-| `WHISPER_MODEL_SIZE` | Whisper模型大小 | `base` | 否 |
+| `WHISPER_MODEL_SIZE` | Whisper模型大小 | `medium` | 否 |
 | `UPLOAD_MAX_MB` | 本地上传单文件大小上限（MB） | `200` | 否 |
 
 另提供可选接口 `POST /api/process-upload`，与向 `/api/process-video` 提交 `file`  multipart 字段行为一致。

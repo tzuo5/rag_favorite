@@ -1,0 +1,25 @@
+{
+  "scan": {
+    "state": "complete",
+    "pages": 21,
+    "submitted": 196,
+    "duplicates": 7,
+    "error_code": null
+  },
+  "first_page_repeat": {
+    "items": 10,
+    "duplicates": 10,
+    "new_jobs": 0
+  },
+  "database_job_states": {
+    "blocked": 3,
+    "queued": 195,
+    "running": 1,
+    "complete": 6
+  },
+  "tests": {
+    "passed": 146,
+    "skipped": 8
+  },
+  "scope": "All readable favorites queued to cooking. Queue completion is not extraction completion. Image OCR not implemented."
+}

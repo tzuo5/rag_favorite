@@ -39,10 +39,34 @@ logs/
 
 # User knowledge and OpenClaw state
 知识库/
+knowledge/
+knowledge-base/
+knowledge_base/
+video-data/
+video-cloud/
+video-transcripts/
+.backup-original/
 memory/
 openclaw.json
 rag-mcp-runtime.env
 openclaw-workspace-state.json
+
+# Generated knowledge artifacts, including copies outside the library roots
+knowledge.md
+original.md
+summary.md
+summary-candidate.md
+record.json
+summary-record.json
+provider-usage.jsonl
+summary-usage.jsonl
+
+# Private source material and library exports used during local validation
+/docs/implementation/asr-original-shrimp-*
+/docs/implementation/vlm-sample-*/
+/docs/implementation/codex-real-video-results.json
+/docs/implementation/queue-audit-*.json
+/docs/implementation/queue-audit-*.csv
 
 # Media and session state
 *.mp4

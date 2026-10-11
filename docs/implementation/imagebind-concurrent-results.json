@@ -1,0 +1,11 @@
+{
+  "parallel_requests": 3,
+  "completed": 3,
+  "views": [
+    15,
+    15,
+    15
+  ],
+  "all_vector_spaces_match": true,
+  "original_media_in_user_library": false
+}

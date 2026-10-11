@@ -4,6 +4,8 @@ import json
 import os
 
 from openai import AsyncOpenAI
+from openai import APIError
+from pydantic import ValidationError
 
 from .markdown import fallback_enrichment, transcript_body
 from .models import Enrichment, SourceMetadata
@@ -13,6 +15,12 @@ class MetadataEnricher:
     """Schema-validated optional LLM enrichment with a deterministic fallback."""
 
     async def enrich(self, metadata: SourceMetadata, transcript: str) -> Enrichment:
+        try:
+            return await self._enrich(metadata, transcript)
+        except (APIError, ValidationError, OSError, TimeoutError, RuntimeError):
+            return fallback_enrichment(metadata.original_title, transcript)
+
+    async def _enrich(self, metadata: SourceMetadata, transcript: str) -> Enrichment:
         key = os.getenv("OPENAI_API_KEY")
         model = os.getenv("OPENAI_MODEL")
         if not key or not model:

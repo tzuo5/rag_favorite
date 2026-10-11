@@ -1,0 +1,108 @@
+{
+  "updated_at": "2026-10-04T13:26:27.447889-05:00",
+  "profile_time_budget_seconds": 0,
+  "profile_mode": "0o600",
+  "resumed_jobs": [
+    {
+      "job_id": "3aa899a2-bf1e-49ec-8046-dd12619d1eb8",
+      "title": "这样做简单好吃入味",
+      "state": "queued",
+      "time_budget_seconds": 0,
+      "checkpoints_before_resume": {
+        "segment-0.json": {
+          "sha256": "b5064ffaa49fa57007af0315d200d5b11fddd7c2bf6d855b6875df30e9185013",
+          "mtime_ns": 1791102688744563492
+        },
+        "segment-1.json": {
+          "sha256": "118711725b14cb7178f64cf88b522e6bd626b9770ef70a249a63ea3d21b4cd7a",
+          "mtime_ns": 1791102729896874721
+        },
+        "segment-3.json": {
+          "sha256": "7214ed6ec871d02800f136578698409b847251f8daa04d8c8890aa5552399923",
+          "mtime_ns": 1791103150198387011
+        },
+        "segment-2.json": {
+          "sha256": "f85903788bb277ca80c8f9fa99cc764a84ed124802cac6cf5e755d4095932475",
+          "mtime_ns": 1791102768620846732
+        }
+      },
+      "previous_requests": 9,
+      "previous_visual_request_seconds": 553.975,
+      "current_state": "running",
+      "current_stage": "extract:1",
+      "current_error_code": null,
+      "job_time_budget_seconds": 0,
+      "old_checkpoints_unchanged": false,
+      "checkpoint_count_now": 4
+    },
+    {
+      "job_id": "ea9ce021-a020-4414-a89b-20de00009b1b",
+      "title": "社交场上的潜规则大合集",
+      "state": "queued",
+      "time_budget_seconds": 0,
+      "checkpoints_before_resume": {
+        "segment-10.json": {
+          "sha256": "4d688c769675688640177dc822410c9241056a5dfb9048804ae34a293d04bf48",
+          "mtime_ns": 1791135890759836957
+        },
+        "segment-0.json": {
+          "sha256": "c52cc16e77dcf3ddcb6fa4ee6d9cbc11292cd3fabbf6629cf59b6a48687ec926",
+          "mtime_ns": 1791135381044494982
+        },
+        "segment-8.json": {
+          "sha256": "5cc90027f50125de38c56d52a1fbc9339087d8863d41db539595a1aef19ad686",
+          "mtime_ns": 1791135765197943619
+        },
+        "segment-1.json": {
+          "sha256": "666ebf39abc3428bcd96dba51d987dc6005bc2e22bc0aa9a49fbf83b18ed6ee4",
+          "mtime_ns": 1791135436322971202
+        },
+        "segment-5.json": {
+          "sha256": "568ce976bb844c5b5a6dd4f96eff490c0e740e0889d0905b6fa3c680e894f046",
+          "mtime_ns": 1791135622923931372
+        },
+        "segment-4.json": {
+          "sha256": "37c6ee83c75cdbc9aebd595aa00457cacd419884ff1b27000c780632edf7d80d",
+          "mtime_ns": 1791135583035651900
+        },
+        "segment-3.json": {
+          "sha256": "a7e806136bb2b007d2e9cdf4f077f0e9c4944f35950a7c09d687d24195b2a4e1",
+          "mtime_ns": 1791135532731363782
+        },
+        "segment-9.json": {
+          "sha256": "37620b524ffacbb65f1706185996d1df42fd14e716399605e3eeada1b84f9e9d",
+          "mtime_ns": 1791135800334764142
+        },
+        "segment-6.json": {
+          "sha256": "cabdc83958c0d444927b8747bb2894f710254ed6279f9b7b84b858a552529cf8",
+          "mtime_ns": 1791135657278681912
+        },
+        "segment-2.json": {
+          "sha256": "0f34611cf6666cd561c987832144f39797abf35db7fdbff3e5fd559031cf8040",
+          "mtime_ns": 1791135477093388978
+        },
+        "segment-7.json": {
+          "sha256": "e75093b7964ea3896ae7280b5eeee366b481e0387683423bc63652ca296bc706",
+          "mtime_ns": 1791135707738534794
+        }
+      },
+      "previous_requests": 15,
+      "previous_visual_request_seconds": 597.219,
+      "current_state": "queued",
+      "current_stage": "queued",
+      "current_error_code": null,
+      "job_time_budget_seconds": 0,
+      "old_checkpoints_unchanged": true,
+      "checkpoint_count_now": 11
+    }
+  ],
+  "regression_tests_passed": 184,
+  "regression_tests_skipped": 13,
+  "real_postgresql_tests_passed": 5,
+  "current_job_states": {
+    "queued": 174,
+    "running": 1,
+    "complete": 32
+  },
+  "status_checked_at": "2026-10-04T13:28:18.596196-05:00"
+}

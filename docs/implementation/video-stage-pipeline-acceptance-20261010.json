@@ -1,0 +1,360 @@
+{
+  "started_at": "2026-10-11T00:02:17.602283+00:00",
+  "finished_at": "2026-10-11T00:59:34.628779+00:00",
+  "wall_seconds": 3437.026,
+  "max_jobs": 5,
+  "paused": true,
+  "active_stage_leases": 0,
+  "temporary_owned_bytes": 0,
+  "models_and_sampling_changed": false,
+  "stage_timing_note": "elapsed_seconds sums attempts; started_at is the latest attempt start",
+  "jobs": [
+    {
+      "id": "6fff8247-f638-42a7-b490-1990d5170b1f",
+      "state": "complete",
+      "stage": "complete",
+      "error_code": null,
+      "source_deleted": true,
+      "summary_chunks": 3,
+      "searchable_in_active_index": true,
+      "duration_seconds": 263.125333,
+      "frame_interval_seconds": 1.0,
+      "frames_per_request": 8,
+      "planned_frames": 264,
+      "analysed_frames": 264,
+      "owned_work_exists": false
+    },
+    {
+      "id": "564dd60a-33e4-4d85-a385-e6f42725614a",
+      "state": "complete",
+      "stage": "complete",
+      "error_code": null,
+      "source_deleted": true,
+      "summary_chunks": 4,
+      "searchable_in_active_index": true,
+      "duration_seconds": 326.250667,
+      "frame_interval_seconds": 1.0,
+      "frames_per_request": 8,
+      "planned_frames": 327,
+      "analysed_frames": 327,
+      "owned_work_exists": false
+    },
+    {
+      "id": "222a6447-d54f-4e74-8b91-a57723dc7650",
+      "state": "complete",
+      "stage": "complete",
+      "error_code": null,
+      "source_deleted": true,
+      "summary_chunks": 3,
+      "searchable_in_active_index": true,
+      "duration_seconds": 205.12,
+      "frame_interval_seconds": 1.0,
+      "frames_per_request": 8,
+      "planned_frames": 206,
+      "analysed_frames": 206,
+      "owned_work_exists": false
+    },
+    {
+      "id": "3870e708-416b-4bb5-ac2b-f5f0ce2dc43d",
+      "state": "complete",
+      "stage": "complete",
+      "error_code": null,
+      "source_deleted": true,
+      "summary_chunks": 4,
+      "searchable_in_active_index": true,
+      "duration_seconds": 249.92,
+      "frame_interval_seconds": 1.0,
+      "frames_per_request": 8,
+      "planned_frames": 250,
+      "analysed_frames": 250,
+      "owned_work_exists": false
+    },
+    {
+      "id": "3cd9dc0b-95e8-423d-a45f-3e743780a195",
+      "state": "complete",
+      "stage": "complete",
+      "error_code": null,
+      "source_deleted": true,
+      "summary_chunks": 4,
+      "searchable_in_active_index": true,
+      "duration_seconds": 338.901333,
+      "frame_interval_seconds": 1.0,
+      "frames_per_request": 8,
+      "planned_frames": 339,
+      "analysed_frames": 339,
+      "owned_work_exists": false
+    }
+  ],
+  "stages": [
+    {
+      "job_id": "222a6447-d54f-4e74-8b91-a57723dc7650",
+      "stage": "download",
+      "status": "done",
+      "started_at": "2026-10-10T19:03:06.378973-05:00",
+      "completed_at": "2026-10-10T19:03:29.317271-05:00",
+      "elapsed_seconds": 22.925,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "222a6447-d54f-4e74-8b91-a57723dc7650",
+      "stage": "prepare",
+      "status": "done",
+      "started_at": "2026-10-10T19:08:26.572301-05:00",
+      "completed_at": "2026-10-10T19:10:21.914885-05:00",
+      "elapsed_seconds": 115.333,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "222a6447-d54f-4e74-8b91-a57723dc7650",
+      "stage": "llm",
+      "status": "done",
+      "started_at": "2026-10-10T19:48:43.422210-05:00",
+      "completed_at": "2026-10-10T19:48:59.198771-05:00",
+      "elapsed_seconds": 1051.379,
+      "attempts": 2,
+      "error_code": null
+    },
+    {
+      "job_id": "222a6447-d54f-4e74-8b91-a57723dc7650",
+      "stage": "publish",
+      "status": "done",
+      "started_at": "2026-10-10T19:48:59.671229-05:00",
+      "completed_at": "2026-10-10T19:49:01.783533-05:00",
+      "elapsed_seconds": 2.103,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "3870e708-416b-4bb5-ac2b-f5f0ce2dc43d",
+      "stage": "download",
+      "status": "done",
+      "started_at": "2026-10-10T19:03:29.336530-05:00",
+      "completed_at": "2026-10-10T19:03:54.429091-05:00",
+      "elapsed_seconds": 25.079,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "3870e708-416b-4bb5-ac2b-f5f0ce2dc43d",
+      "stage": "prepare",
+      "status": "done",
+      "started_at": "2026-10-10T19:12:59.072863-05:00",
+      "completed_at": "2026-10-10T19:15:22.142775-05:00",
+      "elapsed_seconds": 143.062,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "3870e708-416b-4bb5-ac2b-f5f0ce2dc43d",
+      "stage": "llm",
+      "status": "done",
+      "started_at": "2026-10-10T19:40:24.556670-05:00",
+      "completed_at": "2026-10-10T19:48:43.408243-05:00",
+      "elapsed_seconds": 498.843,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "3870e708-416b-4bb5-ac2b-f5f0ce2dc43d",
+      "stage": "publish",
+      "status": "done",
+      "started_at": "2026-10-10T19:48:43.434261-05:00",
+      "completed_at": "2026-10-10T19:48:45.705020-05:00",
+      "elapsed_seconds": 2.263,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "3cd9dc0b-95e8-423d-a45f-3e743780a195",
+      "stage": "download",
+      "status": "done",
+      "started_at": "2026-10-10T19:03:54.448420-05:00",
+      "completed_at": "2026-10-10T19:04:29.378871-05:00",
+      "elapsed_seconds": 34.917,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "3cd9dc0b-95e8-423d-a45f-3e743780a195",
+      "stage": "prepare",
+      "status": "done",
+      "started_at": "2026-10-10T19:23:09.155123-05:00",
+      "completed_at": "2026-10-10T19:26:16.185483-05:00",
+      "elapsed_seconds": 187.021,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "3cd9dc0b-95e8-423d-a45f-3e743780a195",
+      "stage": "llm",
+      "status": "done",
+      "started_at": "2026-10-10T19:48:59.213416-05:00",
+      "completed_at": "2026-10-10T19:59:31.687708-05:00",
+      "elapsed_seconds": 632.463,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "3cd9dc0b-95e8-423d-a45f-3e743780a195",
+      "stage": "publish",
+      "status": "done",
+      "started_at": "2026-10-10T19:59:32.169496-05:00",
+      "completed_at": "2026-10-10T19:59:34.399163-05:00",
+      "elapsed_seconds": 2.222,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "564dd60a-33e4-4d85-a385-e6f42725614a",
+      "stage": "download",
+      "status": "done",
+      "started_at": "2026-10-10T19:02:40.737188-05:00",
+      "completed_at": "2026-10-10T19:03:06.364754-05:00",
+      "elapsed_seconds": 25.615,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "564dd60a-33e4-4d85-a385-e6f42725614a",
+      "stage": "prepare",
+      "status": "done",
+      "started_at": "2026-10-10T19:05:08.291080-05:00",
+      "completed_at": "2026-10-10T19:08:26.560552-05:00",
+      "elapsed_seconds": 198.261,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "564dd60a-33e4-4d85-a385-e6f42725614a",
+      "stage": "llm",
+      "status": "done",
+      "started_at": "2026-10-10T19:12:59.063611-05:00",
+      "completed_at": "2026-10-10T19:23:08.908903-05:00",
+      "elapsed_seconds": 609.836,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "564dd60a-33e4-4d85-a385-e6f42725614a",
+      "stage": "publish",
+      "status": "done",
+      "started_at": "2026-10-10T19:23:09.145923-05:00",
+      "completed_at": "2026-10-10T19:23:11.745773-05:00",
+      "elapsed_seconds": 2.589,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "6fff8247-f638-42a7-b490-1990d5170b1f",
+      "stage": "download",
+      "status": "done",
+      "started_at": "2026-10-10T19:02:18.154596-05:00",
+      "completed_at": "2026-10-10T19:02:40.723549-05:00",
+      "elapsed_seconds": 22.56,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "6fff8247-f638-42a7-b490-1990d5170b1f",
+      "stage": "prepare",
+      "status": "done",
+      "started_at": "2026-10-10T19:02:40.789754-05:00",
+      "completed_at": "2026-10-10T19:05:08.279112-05:00",
+      "elapsed_seconds": 147.483,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "6fff8247-f638-42a7-b490-1990d5170b1f",
+      "stage": "llm",
+      "status": "done",
+      "started_at": "2026-10-10T19:05:08.484797-05:00",
+      "completed_at": "2026-10-10T19:12:59.048942-05:00",
+      "elapsed_seconds": 470.554,
+      "attempts": 1,
+      "error_code": null
+    },
+    {
+      "job_id": "6fff8247-f638-42a7-b490-1990d5170b1f",
+      "stage": "publish",
+      "status": "done",
+      "started_at": "2026-10-10T19:12:59.435034-05:00",
+      "completed_at": "2026-10-10T19:13:02.102725-05:00",
+      "elapsed_seconds": 2.655,
+      "attempts": 1,
+      "error_code": null
+    }
+  ],
+  "ccr": {
+    "scope": "five selected job ledgers, calls started during acceptance",
+    "sent_requests": 199,
+    "http_status_counts": {
+      "200": 199
+    },
+    "complete_json_outputs": 197,
+    "peak_overlapping_client_calls": 1,
+    "failure_categories": {
+      "none": 197,
+      "invalid_json": 1,
+      "timeout": 1
+    },
+    "configured_models": [
+      "Codex API/gpt-6.1-sol"
+    ],
+    "response_models": [
+      "gpt-6-luna"
+    ],
+    "reasoning_efforts": [
+      "medium"
+    ]
+  },
+  "services": {
+    "rag-favorite-video-worker.service": "inactive",
+    "rag-favorite-summary-worker.service": "inactive",
+    "rag-favorite-imagebind.service": "active"
+  },
+  "verification": {
+    "tests_passed": 406,
+    "tests_skipped": 38
+  },
+  "observed_overlap_seconds": {
+    "download_during_ccr_client_call": 0,
+    "prepare_during_ccr_client_call": 641.013,
+    "publish_during_ccr_client_call": 9.547
+  },
+  "overlap_note": "Observed overlapping operations, not a controlled before/after speedup measurement",
+  "pipeline": {
+    "available": true,
+    "stages": {
+      "download": {
+        "waiting": 0,
+        "running": 0,
+        "retry_wait": 0,
+        "blocked": 0
+      },
+      "prepare": {
+        "waiting": 0,
+        "running": 0,
+        "retry_wait": 0,
+        "blocked": 0
+      },
+      "llm": {
+        "waiting": 0,
+        "running": 0,
+        "retry_wait": 0,
+        "blocked": 0
+      },
+      "publish": {
+        "waiting": 0,
+        "running": 0,
+        "retry_wait": 0,
+        "blocked": 0
+      }
+    },
+    "running": [],
+    "jobs": [],
+    "circuit_until": null
+  }
+}

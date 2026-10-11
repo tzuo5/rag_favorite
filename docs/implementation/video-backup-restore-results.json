@@ -1,0 +1,25 @@
+{
+  "backup_directory": ".runtime/videorag/backups/3e119febb87a4f6a932b416df2823f29",
+  "database_dump_bytes": 593431,
+  "derived_archive_bytes": 7830779,
+  "counts": {
+    "original": {
+      "rag_videos": 8,
+      "rag_video_segments": 22,
+      "rag_video_edges": 82,
+      "rag_video_jobs": 14
+    },
+    "restored": {
+      "rag_videos": 8,
+      "rag_video_segments": 22,
+      "rag_video_edges": 82,
+      "rag_video_jobs": 14
+    }
+  },
+  "restored_retrieval_results": 3,
+  "restored_image_verified": true,
+  "database_consistency": "exported PG snapshot",
+  "original_media_in_archive": false,
+  "scratch_database_removed": true,
+  "scope": "isolated MVP; production migration remains pending"
+}

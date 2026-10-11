@@ -1,0 +1,26 @@
+{
+  "job_id": "63106943-707f-4a50-afe2-c3d3f14d2c81",
+  "state": "complete",
+  "source_deleted": true,
+  "owned_source_absent": true,
+  "work_absent": true,
+  "transcript_source": "no_speech_visual_only",
+  "classification": {
+    "mode": "unified",
+    "topics": [],
+    "reason": "No topic-based routing or visual gate."
+  },
+  "segments": 5,
+  "visual_segments": 5,
+  "evidence_images": 10,
+  "mcp_default_all": true,
+  "default_favorites_status_error": false,
+  "search_ok": true,
+  "searched_collections": [
+    "cooking",
+    "tech",
+    "social-conduct"
+  ],
+  "video_retrieved": true,
+  "default_evidence_image_returned": true
+}

@@ -1,0 +1,90 @@
+{
+  "verified_at": "2026-10-06T15:41:18.168029+00:00",
+  "following_count_exact": 40,
+  "following_all_matches_profile": true,
+  "author_pagination": {
+    "first_page": 31,
+    "second_page": 30,
+    "has_more": true,
+    "cursor_advanced": true
+  },
+  "first_limited_import": {
+    "pages": 2,
+    "submitted": 62,
+    "state": "partial"
+  },
+  "current_status": {
+    "scan_id": "42cc772c-80a7-4241-8789-6db1d2664089",
+    "state": "backpressure",
+    "mode": "history",
+    "following_complete": true,
+    "following_count": 40,
+    "error_code": null,
+    "paused": false,
+    "worker_paused": false,
+    "worker_refresh": {
+      "state": "complete",
+      "queue_resumed": true,
+      "user_control_preserved": false
+    },
+    "authors": {
+      "complete": 1,
+      "pending": 39
+    },
+    "pages": 15,
+    "submitted": 467,
+    "duplicates": 0,
+    "discovered": 485,
+    "jobs": {
+      "queued": 484,
+      "complete": 1
+    },
+    "media_gaps": [],
+    "last_full_scan_at": null,
+    "enumeration_scope": "all_available_posts",
+    "author_errors": [],
+    "discovery_complete": false,
+    "processing_complete": false
+  },
+  "tests": {
+    "core": {
+      "passed": 265,
+      "skipped": 27
+    },
+    "explicit_postgresql": {
+      "passed": 12,
+      "skipped": 0
+    },
+    "ruff": "passed",
+    "compileall": "passed",
+    "shell_syntax": "passed",
+    "diff_check": "passed",
+    "pip_check": "passed"
+  },
+  "ocr": {
+    "synthetic_local_smoke": "passed",
+    "real_note_images": 5,
+    "first_image_ocr_regions": 13
+  },
+  "image_vlm_live_acceptance": "not_run_while_existing_video_worker_is_active",
+  "historical_backfill_complete": false,
+  "limitations": [
+    "Platform endpoints and profile selectors may change.",
+    "Missing precision or count mismatch stops following enumeration.",
+    "Deleted/private/unreturned content cannot be guaranteed.",
+    "ImageBind image similarity search is not added."
+  ],
+  "timer_install_uninstall_reinstall": "passed",
+  "migration_reapplication": {
+    "pending": []
+  },
+  "queue_processing_upgrade": "complete",
+  "shared_video_pipeline_observation": {
+    "existing_jobs_blocked": 2,
+    "following_jobs_blocked": 0,
+    "error_code": "LOCAL_ENCODER_HTTP_ERROR",
+    "stage": "failed:embed_video:1",
+    "root_cause": "not_determined",
+    "scope": "Existing shared video encoder; observed failures are not following-origin jobs."
+  }
+}

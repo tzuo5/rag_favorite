@@ -1,0 +1,60 @@
+{
+  "status": "passed",
+  "timestamp": "2026-10-03T20:19:21.400527+00:00",
+  "backend": "lmstudio",
+  "model": {
+    "model": "text-embedding-qwen3-embedding-0.6b",
+    "model_digest": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+    "model_path": "/home/tzuo5/.lmstudio/models/rag-favorite/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+    "size": 639150592,
+    "context_length": 4096,
+    "model_key": "text-embedding-qwen3-embedding-0.6b"
+  },
+  "active_generation": "lmstudio-20261003-a",
+  "documents": 4,
+  "cli_top1": "sauce.md",
+  "restart": "HTTP server, selected model and PostgreSQL stopped/started; verified from another shell.",
+  "idempotent_start_loaded_instances": 1,
+  "stdio_tools": [
+    "rag_search",
+    "rag_status"
+  ],
+  "stdio_single_library": "passed",
+  "stdio_explicit_cross_library": "passed",
+  "setup_checks": [
+    {
+      "name": "configuration",
+      "status": "ready",
+      "detail": "/home/tzuo5/rag_favorite/.runtime/phase1/config.toml",
+      "required": true
+    },
+    {
+      "name": "directories",
+      "status": "ready",
+      "detail": "configured collection roots",
+      "required": true
+    },
+    {
+      "name": "database",
+      "status": "ready",
+      "detail": "2 migrations applied",
+      "required": true
+    },
+    {
+      "name": "embedding",
+      "status": "ready",
+      "detail": "text-embedding-qwen3-embedding-0.6b",
+      "required": true
+    },
+    {
+      "name": "ffmpeg",
+      "status": "missing",
+      "detail": "required only for media ingestion",
+      "required": false
+    }
+  ],
+  "runtime_load": "--gpu off --context-length 4096",
+  "wheel": "rag_favorite-1.2.0-py3-none-any.whl",
+  "packaged_sql": "identical to canonical migrations",
+  "linux_password_required": false
+}

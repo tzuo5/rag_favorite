@@ -1,5 +1,7 @@
 # HKUDS/VideoRAG 部署配置与限制
 
+> 本文是 2026-10-01 的历史调研，包含此前云模型/云 embedding 选型。最新固定版本与本机核查见 [VideoRAG 接入核查记录](videorag-integration-audit.md)，当前实施目标见 [VideoRAG、本地 embedding 与远程 MCP 修改计划](../videorag-local-mcp-plan.md)。本地双 embedding 与 import 成功后删源的要求以新计划为准。
+
 调研日期：2026-10-01。对象为官方仓库 `main` 下的 `VideoRAG-algorithm` 与 `Vimo-desktop`；模型名称为代码中的默认值，不代表当前最优选型。用户目标：Linux、32 GB 系统内存、RTX 4060 Laptop（按标准 8 GB 显存考虑），处理约 3 分钟中文视频中的人物动作、屏幕文字和做饭步骤。本文为源码与文档调研，没有安装模型、运行推理或测量性能。
 
 ## 需要自行准备什么

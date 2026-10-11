@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from collections.abc import Callable
 from typing import Any
 
 from .config import AppConfig, ConfigError, load_config
+from .indexes import resolve_index
 from .mcp_contracts import (
     MAX_QUERY_CHARACTERS,
     MAX_SEARCH_LIMIT,
@@ -71,11 +73,21 @@ def create_mcp_server(
     """Build an isolated server instance with a fixed read-only tool set."""
 
     resolved = config or load_config()
+    if resolved.unified:
+        from .video_config import load_video_config
+        from .video_mcp import create_video_mcp
+
+        return create_video_mcp(resolved, load_video_config(resolved.knowledge_profile))
     configured = tuple(resolved.collections)
     configured_set = set(configured)
     server = _fastmcp_class()("rag-favorite")
+    from mcp.types import ToolAnnotations
 
-    @server.tool(name=MCP_TOOL_NAMES[1])
+    read_only = ToolAnnotations(
+        readOnlyHint=True, destructiveHint=False, openWorldHint=False
+    )
+
+    @server.tool(name=MCP_TOOL_NAMES[1], annotations=read_only)
     def rag_status(knowledge_base: str = "all") -> dict[str, Any]:
         """
         Check local RAG health and index status. This tool is read-only.
@@ -104,6 +116,9 @@ def create_mcp_server(
                 "chunks": int(payload.get("chunks") or 0),
                 "embedding_model": payload.get("embedding_model"),
                 "embedding_dimensions": payload.get("embedding_dimensions"),
+                "embedding_backend": payload.get("embedding_backend"),
+                "embedding_space_id": payload.get("embedding_space_id"),
+                "index_generation": payload.get("index_generation"),
                 "index_version": payload.get("index_version"),
                 "last_indexed_at": payload.get("last_indexed_at"),
                 "collections": normalized_collections,
@@ -114,7 +129,7 @@ def create_mcp_server(
         except Exception:  # noqa: BLE001 - MCP errors must not expose host details
             return _safe_backend_error("status")
 
-    @server.tool(name=MCP_TOOL_NAMES[0])
+    @server.tool(name=MCP_TOOL_NAMES[0], annotations=read_only)
     def rag_search(
         query: str,
         knowledge_base: str,
@@ -160,6 +175,11 @@ def create_mcp_server(
         if invalid:
             raise ValueError("Unknown knowledge base: " + ", ".join(invalid))
         try:
+            context = (
+                resolve_index(resolved)
+                if search_provider is search_documents
+                else resolved
+            )
             groups = [
                 [
                     validate_search_result(item, configured_set)
@@ -167,7 +187,7 @@ def create_mcp_server(
                         normalized_query,
                         limit,
                         [collection],
-                        resolved,
+                        context,
                     )
                 ]
                 for collection in selected
@@ -199,7 +219,15 @@ def main() -> int:
     """Run the server over stdio without opening a network listener."""
 
     try:
-        create_mcp_server().run(transport="stdio")
+        if os.environ.get("RAG_VIDEO_CONFIG"):
+            # The owner's unified profile applies summary-only retrieval to
+            # both installed MCP entrypoints; standalone document setups remain.
+            from .video_mcp import create_video_mcp
+
+            server = create_video_mcp()
+        else:
+            server = create_mcp_server()
+        server.run(transport="stdio")
         return 0
     except (ConfigError, OSError, RuntimeError) as exc:
         print(f"rag-favorite-mcp: {exc}", file=sys.stderr)

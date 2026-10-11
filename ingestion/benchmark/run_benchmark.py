@@ -27,7 +27,7 @@ thread = threading.Thread(target=monitor, daemon=True)
 thread.start()
 started = time.perf_counter()
 model = WhisperModel(
-    os.getenv("WHISPER_MODEL_SIZE", "base"),
+    os.getenv("WHISPER_MODEL_SIZE", "medium"),
     device=os.getenv("WHISPER_DEVICE", "cpu"),
     compute_type=os.getenv("WHISPER_COMPUTE_TYPE", "int8"),
     cpu_threads=int(os.getenv("WHISPER_CPU_THREADS", "2")),
@@ -47,7 +47,7 @@ print(json.dumps({
     "elapsed_seconds_including_load": round(elapsed, 3),
     "peak_rss_mib": round(peak_rss / 1024 / 1024, 1),
     "real_time_factor": round(elapsed / duration, 3),
-    "model": os.getenv("WHISPER_MODEL_SIZE", "base"),
+    "model": os.getenv("WHISPER_MODEL_SIZE", "medium"),
     "device": os.getenv("WHISPER_DEVICE", "cpu"),
     "compute_type": os.getenv("WHISPER_COMPUTE_TYPE", "int8"),
     "cpu_threads": int(os.getenv("WHISPER_CPU_THREADS", "2")),

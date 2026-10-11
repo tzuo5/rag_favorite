@@ -1,0 +1,60 @@
+{
+  "observed_at": "2026-10-04T13:46:20.130812-05:00",
+  "tests": {
+    "passed": 202,
+    "skipped": 13,
+    "explicit_postgresql_queue_tests_passed": 5
+  },
+  "checks": {
+    "ruff": true,
+    "compileall": true,
+    "shell_syntax": true,
+    "git_diff_check": true
+  },
+  "real_provider_proof": "dense-sampling-live-results.json",
+  "synthetic_media_quality_scope": "sampling_and_publication_only_not_real_corpus_quality",
+  "config": {
+    "silent_frame_interval_seconds": 0.5,
+    "speech_frame_interval_seconds": 1.0,
+    "visual_max_duration_seconds": 600.0,
+    "visual_frames_per_request": 8,
+    "visual_budget_seconds": 0
+  },
+  "services": {
+    "rag-favorite-video-worker.service": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "Result": "success"
+    },
+    "rag-favorite-imagebind.service": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "Result": "success"
+    },
+    "rag-favorite-favorites.timer": {
+      "ActiveState": "active",
+      "SubState": "waiting",
+      "Result": "success"
+    }
+  },
+  "owner_queue": {
+    "queued": 173,
+    "running": 1,
+    "complete": 33
+  },
+  "running_jobs": [
+    {
+      "job_id": "ea9ce021-a020-4414-a89b-20de00009b1b",
+      "stage": "extract:0",
+      "title": "社交场上的潜规则大合集"
+    }
+  ],
+  "favorites_schedule": {
+    "timezone": "America/Chicago",
+    "times": [
+      "07:00",
+      "18:00"
+    ]
+  },
+  "historic_complete_media_not_redownloaded": true
+}

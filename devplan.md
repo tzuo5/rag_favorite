@@ -1,8 +1,10 @@
 # 视频视觉知识与时间检索开发计划
 
-更新日期：2026-10-01（America/Chicago）。当前为计划阶段；后续在 Linux 服务器开发，沿用 OpenRouter 成本优先方案。
+> **新目标以 [VideoRAG、本地 embedding 与远程 MCP 修改计划](docs/videorag-local-mcp-plan.md) 为准（2026-10-03）。** 本文保留旧方案与开发历史；下文关于云端两类 embedding、OpenClaw 入口依赖、不接入 VideoRAG，以及查询时按需分析原视频的选择已被新计划替代。新要求为本地文本/视频 embedding、独立 Telegram Bot、远程 MCP，成功 import 后删除原视频与临时切片，查询只使用已保存的 RAG 知识和证据。已有 Phase 1 实施事实仍以实施记录为准，新 V0–V6 尚未实施。
 
-**当前状态：planning / planned（计划阶段）。** 已整理需求、模型调研、费用估算和实施规格；本文描述的新增功能尚未开始开发，模型质量、接口兼容、费用与性能均待实际验证。当前只编辑开发文档，未安装依赖或模型、调用付费 API、迁移数据库或运行测试。
+更新日期：2026-10-03（America/Chicago）。已在 Linux 开始 Phase 1 基础开发，沿用 OpenRouter 成本优先方案。
+
+**当前状态：Phase 1 / in_progress。** 已恢复旧备份、同步产品化代码，并实现转录时间、分类/gate、云 ASR 与文本 embedding 的基础适配和离线测试。真实 CCR/OpenRouter、媒体/数据库联调与模型质量尚未验收；Phase 2–5 保持 planned。实施事实与限制见 [Linux Phase 1 实施记录](docs/implementation/linux-phase1.md)。下文仍是完整目标规格，不代表全部功能已经实现。
 
 **后续实施环境：用户的 Linux 服务器。** Phase 1 起的代码开发、依赖安装、测试、数据库实验和 API 联调均在 Linux 工作目录开展；当前 macOS 工作区用于方案整理，不作为服务器环境基线。服务器路径、系统版本、服务用户、CCR 地址和素材位置在开工时记录。
 

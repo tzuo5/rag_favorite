@@ -7,6 +7,7 @@ import pytest
 
 from rag_favorite.config import load_config
 from rag_favorite.migrations import (
+    MIGRATIONS,
     MigrationError,
     MigrationRunner,
     load_migration,
@@ -87,7 +88,7 @@ def test_migration_runner_applies_once_with_configured_dimensions(
         _config(tmp_path, 1536), connector=lambda *_a, **_k: connection
     )
 
-    assert runner.apply() == ("0001_document_rag.sql",)
+    assert runner.apply() == MIGRATIONS
     assert connection.closed
     sql = "\n".join(statement for statement, _ in connection.executed)
     assert "embedding vector(1536) NOT NULL" in sql
@@ -95,9 +96,8 @@ def test_migration_runner_applies_once_with_configured_dimensions(
 
 
 def test_migration_runner_preserves_verified_history(tmp_path: Path) -> None:
-    source = load_migration("0001_document_rag.sql")
     connection = FakeConnection(
-        [("0001_document_rag.sql", migration_checksum(source), 1024)]
+        [(name, migration_checksum(load_migration(name)), 1024) for name in MIGRATIONS]
     )
     runner = MigrationRunner(_config(tmp_path), connector=lambda *_a, **_k: connection)
 
@@ -132,3 +132,32 @@ def test_migration_runner_rejects_changed_history(tmp_path: Path) -> None:
 def test_render_migration_rejects_invalid_dimensions() -> None:
     with pytest.raises(MigrationError, match="positive"):
         render_migration(load_migration("0001_document_rag.sql"), 0)
+
+
+def test_non_initial_migration_needs_no_vector_marker():
+    source = load_migration("0002_index_generations.sql")
+    assert "vector(1024)" not in source
+    assert render_migration(source, 1024, initial=False) == source
+    assert (
+        source
+        == (
+            Path(__file__).parents[1] / "migrations/core/0002_index_generations.sql"
+        ).read_text()
+    )
+
+
+def test_existing_initial_schema_only_gets_new_migration(tmp_path):
+    connection = FakeConnection(
+        [
+            (
+                "0001_document_rag.sql",
+                migration_checksum(load_migration("0001_document_rag.sql")),
+                1024,
+            )
+        ]
+    )
+    runner = MigrationRunner(_config(tmp_path), connector=lambda *_a, **_k: connection)
+    assert runner.apply() == MIGRATIONS[1:]
+    assert not any(
+        "CREATE TABLE IF NOT EXISTS rag_documents" in q for q, _ in connection.executed
+    )

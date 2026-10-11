@@ -70,7 +70,7 @@ def setup_environment():
     
     # 设置其他默认配置
     if not os.getenv("WHISPER_MODEL_SIZE"):
-        os.environ["WHISPER_MODEL_SIZE"] = "base"
+        os.environ["WHISPER_MODEL_SIZE"] = "medium"
     
     print("🔑 OpenAI API已配置，摘要功能可用")
     return True

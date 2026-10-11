@@ -33,6 +33,16 @@ def _path(name: str, default: str | Path) -> Path:
 
 @dataclass(frozen=True)
 class Settings:
+    video_visual_enabled: bool = field(default_factory=lambda: _bool("VIDEO_VISUAL_ENABLED"))
+    video_visual_allowed_categories: tuple[str, ...] = field(default_factory=lambda: tuple(
+        v.strip() for v in os.getenv("VIDEO_VISUAL_ALLOWED_CATEGORIES", "cooking").split(",") if v.strip()
+    ))
+    video_asr_backend: str = field(default_factory=lambda: os.getenv("VIDEO_ASR_BACKEND", "whisper"))
+    video_asr_model: str = field(default_factory=lambda: os.getenv("VIDEO_ASR_MODEL", "qwen/qwen3-asr-0.6b"))
+    openrouter_base_url: str = field(default_factory=lambda: os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"))
+    cloud_cache_root: Path = field(default_factory=lambda: _path("VIDEO_CLOUD_CACHE_ROOT", PRODUCT_DATA / "video-cloud"))
+    video_asr_chunk_seconds: int = field(default_factory=lambda: _int("VIDEO_ASR_COARSE_CHUNK_SECONDS", 30))
+    video_cloud_max_cost_usd: float = field(default_factory=lambda: float(os.getenv("VIDEO_CLOUD_MAX_COST_USD", "0.03")))
     root: Path = ROOT
     temp_root: Path = field(
         default_factory=lambda: _path("VIDEO_TEMP_ROOT", ROOT / "temp/jobs")
@@ -239,6 +249,10 @@ class Settings:
             raise ValueError(f"{', '.join(invalid_jitters)} must not be negative")
 
     def ensure_directories(self) -> None:
+        if self.video_asr_backend not in {"whisper", "openrouter"}:
+            raise ValueError("VIDEO_ASR_BACKEND must be whisper or openrouter")
+        if set(self.video_visual_allowed_categories) - {"cooking"}:
+            raise ValueError("Only cooking is supported for visual processing")
         for path in (self.temp_root, self.staging_root):
             path.mkdir(parents=True, exist_ok=True, mode=0o700)
 

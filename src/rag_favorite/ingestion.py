@@ -342,6 +342,17 @@ class IngestionManager:
             ),
             "detection": asdict(detection),
             "openclaw": plugin_status,
+            "video_cloud": {
+                "text_model": os.getenv("OPENAI_MODEL", "Codex API/gpt-6-luna"),
+                "text_api_style": os.getenv("OPENAI_API_STYLE", "responses"),
+                "text_configured": bool(os.getenv("OPENAI_API_KEY") and os.getenv("OPENAI_BASE_URL")),
+                "openrouter_configured": bool(os.getenv("OPENROUTER_API_KEY")),
+                "asr_backend": os.getenv("VIDEO_ASR_BACKEND", "whisper"),
+                "asr_model": os.getenv("VIDEO_ASR_MODEL", "qwen/qwen3-asr-0.6b"),
+                "visual_enabled": os.getenv("VIDEO_VISUAL_ENABLED", "false").lower() in {"1", "true", "yes", "on"},
+                "visual_implementation": "pending-phase2",
+                "model_availability": "unverified",
+            },
         }
 
     def uninstall(

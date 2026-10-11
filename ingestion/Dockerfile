@@ -26,7 +26,7 @@ RUN mkdir -p temp
 # 设置环境变量
 ENV HOST=0.0.0.0
 ENV PORT=8000
-ENV WHISPER_MODEL_SIZE=base
+ENV WHISPER_MODEL_SIZE=medium
 ENV UPLOAD_MAX_MB=200
 
 # 暴露端口

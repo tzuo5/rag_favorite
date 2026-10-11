@@ -8,19 +8,17 @@ import json
 from pathlib import Path
 from typing import Any
 
-import psycopg
 from pgvector import Vector
-from pgvector.psycopg import register_vector
 
 from .config import (
     AppConfig,
     CollectionConfig,
     ConfigError,
-    database_credentials,
     load_config,
 )
 from .database import connect_database
-from .embedding import OllamaEmbeddingClient
+from .embedding import client_from_config, embedding_space_id, index_model_id
+from .indexes import assert_write_snapshot, resolve_index
 
 SUPPORTED_SUFFIXES = frozenset({".md", ".txt"})
 MAX_CHUNK_CHARACTERS = 1800
@@ -66,71 +64,11 @@ def infer_knowledge_base(
 
 
 def initialize_schema(config: AppConfig | None = None) -> None:
+    from .migrations import MigrationRunner
+
     resolved = config or load_config()
-    settings = database_credentials(resolved)
-    with psycopg.connect(
-        host=settings["host"],
-        port=int(settings["port"]),
-        dbname=settings["name"],
-        user=settings["user"],
-        password=settings["password"],
-        connect_timeout=10,
-        application_name="rag-favorite-migrate",
-    ) as connection:
-        connection.execute("CREATE EXTENSION IF NOT EXISTS vector")
-        register_vector(connection)
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS rag_documents (
-                id bigserial PRIMARY KEY,
-                source_path text NOT NULL UNIQUE,
-                knowledge_base text NOT NULL,
-                source_relative_path text NOT NULL,
-                source_name text NOT NULL,
-                source_type text NOT NULL,
-                source_sha256 text NOT NULL,
-                embedding_model text NOT NULL,
-                embedding_dimensions integer NOT NULL,
-                chunking_version integer NOT NULL DEFAULT 1,
-                index_version integer NOT NULL DEFAULT 3,
-                indexed_at timestamptz NOT NULL DEFAULT now()
-            )
-            """
-        )
-        connection.execute(
-            """
-            ALTER TABLE rag_documents
-                ADD COLUMN IF NOT EXISTS knowledge_base text NOT NULL DEFAULT 'general',
-                ADD COLUMN IF NOT EXISTS source_relative_path text NOT NULL DEFAULT '',
-                ADD COLUMN IF NOT EXISTS index_version integer NOT NULL DEFAULT 1
-            """
-        )
-        dimensions = resolved.embedding.dimensions
-        connection.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS rag_chunks (
-                id bigserial PRIMARY KEY,
-                document_id bigint NOT NULL REFERENCES rag_documents(id) ON DELETE CASCADE,
-                chunk_index integer NOT NULL,
-                content text NOT NULL,
-                character_count integer NOT NULL,
-                embedding vector({dimensions}) NOT NULL,
-                created_at timestamptz NOT NULL DEFAULT now(),
-                UNIQUE (document_id, chunk_index)
-            )
-            """
-        )
-        connection.execute(
-            "CREATE INDEX IF NOT EXISTS rag_chunks_document_id_idx "
-            "ON rag_chunks(document_id)"
-        )
-        connection.execute(
-            "CREATE INDEX IF NOT EXISTS rag_documents_knowledge_base_idx "
-            "ON rag_documents(knowledge_base)"
-        )
-    print("RAG database schema initialized.")
-    print(f"Embedding model: {resolved.embedding.model}")
-    print(f"Embedding dimensions: {resolved.embedding.dimensions}")
+    applied = MigrationRunner(resolved).apply()
+    print("RAG database schema initialized: " + ", ".join(applied or ("current",)))
 
 
 def request_embeddings(
@@ -139,8 +77,8 @@ def request_embeddings(
     query_mode: bool = False,
     config: AppConfig | None = None,
 ) -> list[list[float]]:
-    resolved = config or load_config()
-    client = OllamaEmbeddingClient(resolved.embedding)
+    resolved = resolve_index(config or load_config())
+    client = client_from_config(resolved)
     values = (
         [client.embed_query(text) for text in texts]
         if query_mode
@@ -152,8 +90,8 @@ def request_embeddings(
 def embed_documents(
     chunks: list[str], config: AppConfig | None = None
 ) -> list[list[float]]:
-    resolved = config or load_config()
-    client = OllamaEmbeddingClient(resolved.embedding)
+    resolved = resolve_index(config or load_config())
+    client = client_from_config(resolved)
     result: list[list[float]] = []
     batch_size = resolved.embedding.batch_size
     for start in range(0, len(chunks), batch_size):
@@ -230,7 +168,7 @@ def document_is_current(
     collection_key: str,
     config: AppConfig | None = None,
 ) -> bool:
-    resolved = config or load_config()
+    resolved = resolve_index(config or load_config())
     with connect_database(resolved) as connection:
         row = connection.execute(
             """
@@ -243,7 +181,7 @@ def document_is_current(
     return bool(
         row
         and row[0] == source_sha256
-        and row[1] == resolved.embedding.model
+        and row[1] == index_model_id(resolved.embedding)
         and row[2] == resolved.embedding.dimensions
         and row[3] == 1
         and row[4] == INDEX_VERSION
@@ -251,12 +189,56 @@ def document_is_current(
     )
 
 
+def ensure_embedding_space(config: AppConfig) -> None:
+    """Reject wrong encoder metadata before any embedding request."""
+    resolved = resolve_index(config)
+    with connect_database(resolved) as connection:
+        _assert_embedding_space(connection, resolved)
+
+
+def _assert_embedding_space(connection, config: AppConfig) -> None:
+    if config.index.generation != "legacy":
+        stored = connection.execute(
+            "SELECT to_regclass(%s) IS NOT NULL, to_regclass(%s) IS NOT NULL",
+            (
+                config.index.schema + ".rag_documents",
+                config.index.schema + ".rag_chunks",
+            ),
+        ).fetchone()
+        if not stored or not all(stored):
+            raise ConfigError(
+                "Generation index tables are missing; refusing legacy schema fallback."
+            )
+        row = connection.execute(
+            "SELECT space_id FROM public.rag_index_generations WHERE id=%s",
+            (config.index.generation,),
+        ).fetchone()
+        if row is None or row[0] != embedding_space_id(config.embedding):
+            raise ConfigError("Generation embedding space mismatch.")
+    incompatible = connection.execute(
+        "SELECT embedding_model FROM rag_documents "
+        "WHERE embedding_model <> %s OR embedding_dimensions <> %s LIMIT 1",
+        (index_model_id(config.embedding), config.embedding.dimensions),
+    ).fetchone()
+    if incompatible:
+        raise ConfigError(
+            "Embedding space mismatch. Create and build a pinned shadow generation before switching encoders. Unversioned legacy vectors cannot be reused safely."
+        )
+
+
 def ingest_file(
     path: Path,
     knowledge_base_key: str | None = None,
     config: AppConfig | None = None,
 ) -> bool:
-    resolved = config or load_config()
+    resolved = resolve_index(config or load_config())
+    if resolved.unified:
+        from .knowledge_migration import import_single_document
+        from .video_config import load_video_config
+
+        return import_single_document(
+            resolved, load_video_config(resolved.knowledge_profile), path
+        )
     collection = (
         resolved.collection(knowledge_base_key)
         if knowledge_base_key
@@ -267,6 +249,7 @@ def ingest_file(
     source = path_within_root(path, collection.path)
     relative = source.relative_to(collection.path.expanduser().resolve()).as_posix()
     digest = calculate_sha256(source)
+    ensure_embedding_space(resolved)
     if document_is_current(str(source), digest, collection.key, resolved):
         print(f"Unchanged; skipped: {relative}")
         return False
@@ -276,7 +259,12 @@ def ingest_file(
         return False
     print(f"Indexing: {collection.key}/{relative}")
     embeddings = embed_documents(chunks, resolved)
+    if calculate_sha256(source) != digest:
+        raise ConfigError("Source file changed during embedding; retry the operation.")
     with connect_database(resolved) as connection:
+        connection.execute("SELECT pg_advisory_xact_lock(85800874160583809)")
+        assert_write_snapshot(connection, resolved)
+        _assert_embedding_space(connection, resolved)
         row = connection.execute(
             """
             INSERT INTO rag_documents (
@@ -304,7 +292,7 @@ def ingest_file(
                 source.name,
                 source.suffix.lower(),
                 digest,
-                resolved.embedding.model,
+                index_model_id(resolved.embedding),
                 resolved.embedding.dimensions,
                 INDEX_VERSION,
             ),
@@ -336,7 +324,7 @@ def ingest_file(
 def ingest_path(
     path_text: str, collection_key: str, config: AppConfig | None = None
 ) -> None:
-    resolved = config or load_config()
+    resolved = resolve_index(config or load_config())
     collection = resolved.collection(collection_key)
     source = path_within_root(Path(path_text), collection.path)
     indexed = 0
@@ -355,15 +343,23 @@ def search_documents(
     knowledge_base_keys: list[str],
     config: AppConfig | None = None,
 ) -> list[dict[str, object]]:
-    resolved = config or load_config()
+    resolved = resolve_index(config or load_config())
+    if resolved.unified:
+        from .unified_library import search
+        from .video_config import load_video_config
+
+        return search(
+            resolved, load_video_config(resolved.knowledge_profile), query, limit
+        )
     cleaned = query.strip()
     if not cleaned:
         raise ConfigError("Search query cannot be empty.")
     selected = [resolved.collection(key).key for key in knowledge_base_keys]
-    query_vector = Vector(
-        OllamaEmbeddingClient(resolved.embedding).embed_query(cleaned)
-    )
+    ensure_embedding_space(resolved)
+    query_vector = Vector(list(client_from_config(resolved).embed_query(cleaned)))
     with connect_database(resolved) as connection:
+        connection.execute("SELECT pg_advisory_xact_lock_shared(85800874160583809)")
+        _assert_embedding_space(connection, resolved)
         rows = connection.execute(
             """
             SELECT d.id, d.knowledge_base, d.source_relative_path, d.source_name,
@@ -391,7 +387,10 @@ def search_documents(
             "combined_score": float(row[7]),
             "reliable": True,
             "content_hash": row[4],
-            "metadata": {},
+            "metadata": {
+                "generation": resolved.index.generation,
+                "embedding_space_id": embedding_space_id(resolved.embedding),
+            },
         }
         for row in rows
     ]
@@ -424,7 +423,24 @@ def status_data(
     knowledge_base_key: str | None = None,
     config: AppConfig | None = None,
 ) -> dict[str, object]:
-    resolved = config or load_config()
+    resolved = resolve_index(config or load_config())
+    if resolved.unified:
+        from .unified_library import status
+        from .video_config import load_video_config
+
+        result = status(resolved, load_video_config(resolved.knowledge_profile))
+        return {
+            **result,
+            "documents": result["published_documents"],
+            "chunks": result["published_chunks"],
+            "knowledge_base": "all",
+            "embedding_model": resolved.embedding.model,
+            "embedding_dimensions": resolved.embedding.dimensions,
+            "embedding_backend": resolved.embedding.backend,
+            "embedding_space_id": embedding_space_id(resolved.embedding),
+            "index_generation": result["generation"],
+            "index_version": INDEX_VERSION,
+        }
     selected = (
         resolved.collection(knowledge_base_key).key if knowledge_base_key else None
     )
@@ -460,6 +476,9 @@ def status_data(
         "chunks": sum(value["chunks"] for value in collections.values()),
         "embedding_model": resolved.embedding.model,
         "embedding_dimensions": resolved.embedding.dimensions,
+        "embedding_backend": resolved.embedding.backend,
+        "embedding_space_id": embedding_space_id(resolved.embedding),
+        "index_generation": resolved.index.generation,
         "index_version": max(
             (value["index_version"] for value in collections.values()),
             default=INDEX_VERSION,
@@ -486,18 +505,19 @@ def show_status(
 
 
 def run_doctor(config: AppConfig | None = None) -> None:
-    resolved = config or load_config()
+    resolved = resolve_index(config or load_config())
+    ensure_embedding_space(resolved)
     with connect_database(resolved) as connection:
         vector_version = connection.execute(
             "SELECT extversion FROM pg_extension WHERE extname = 'vector'"
         ).fetchone()
     if vector_version is None:
         raise RuntimeError("pgvector extension is unavailable.")
-    embedding = OllamaEmbeddingClient(resolved.embedding).embed_document(
-        "RAG health check"
-    )
+    embedding = client_from_config(resolved).embed_document("RAG health check")
     print(f"PostgreSQL pgvector: {vector_version[0]}")
-    print(f"Ollama model: {resolved.embedding.model}")
+    print(
+        f"Embedding provider/model: {resolved.embedding.backend}/{resolved.embedding.model}"
+    )
     print(f"Returned dimensions: {len(embedding)}")
     print("RAG dependencies are healthy.")
 
@@ -513,8 +533,21 @@ def add_rag_commands(
         "--collection",
         "--knowledge-base",
         dest="collection",
-        required=True,
-        choices=tuple(config.collections),
+        required=not config.unified,
+        default="all" if config.unified else None,
+        choices=(
+            "all",
+            "general",
+            "cooking",
+            "tech",
+            "career",
+            "finance",
+            "social-conduct",
+            "thought-politics",
+            "literature-culture",
+        )
+        if config.unified
+        else tuple(config.collections),
     )
     search = commands.add_parser("search", help="Search indexed content.")
     search.add_argument("query")
@@ -524,8 +557,20 @@ def add_rag_commands(
         "--knowledge-base",
         dest="collections",
         action="append",
-        required=True,
-        choices=tuple(config.collections),
+        required=not config.unified,
+        choices=(
+            "all",
+            "general",
+            "cooking",
+            "tech",
+            "career",
+            "finance",
+            "social-conduct",
+            "thought-politics",
+            "literature-culture",
+        )
+        if config.unified
+        else tuple(config.collections),
     )
     search.add_argument("--json", action="store_true")
     status = commands.add_parser("status", help="Show index statistics.")

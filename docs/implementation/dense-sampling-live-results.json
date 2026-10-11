@@ -1,0 +1,71 @@
+{
+  "scope": "synthetic_sources_real_provider_calls_not_real_corpus_quality",
+  "cases": [
+    {
+      "case": "silent",
+      "synthetic_source": true,
+      "real_models": true,
+      "duration_seconds": 2.0,
+      "has_audio": false,
+      "interval_seconds": 0.5,
+      "analysed_frames": 4,
+      "state": "complete",
+      "visual_policy": {
+        "enabled": true,
+        "reason": "enabled",
+        "duration_seconds": 2.0,
+        "max_duration_seconds": 600.0,
+        "frame_interval_seconds": 0.5,
+        "planned_frame_count": 4,
+        "frames_per_request": 8
+      },
+      "visual_vectors": 1,
+      "original_owned_media_removed": true,
+      "markdown_path": "/home/tzuo5/gpt projects/rag_favorite/.runtime/videorag/data/sampling-proof/20261004-134224/silent/derived/dca901fb-48f6-4d4f-a4be-bf94a6fd6acf/knowledge.md"
+    },
+    {
+      "case": "subtitles",
+      "synthetic_source": true,
+      "real_models": true,
+      "duration_seconds": 2.0,
+      "has_audio": false,
+      "interval_seconds": 1.0,
+      "analysed_frames": 2,
+      "state": "complete",
+      "visual_policy": {
+        "enabled": true,
+        "reason": "enabled",
+        "duration_seconds": 2.0,
+        "max_duration_seconds": 600.0,
+        "frame_interval_seconds": 1.0,
+        "planned_frame_count": 2,
+        "frames_per_request": 8
+      },
+      "visual_vectors": 1,
+      "original_owned_media_removed": true,
+      "markdown_path": "/home/tzuo5/gpt projects/rag_favorite/.runtime/videorag/data/sampling-proof/20261004-134224/subtitles/derived/0314298e-5250-4bdc-be19-513d9f9d8d03/knowledge.md"
+    },
+    {
+      "case": "over-600",
+      "synthetic_source": true,
+      "real_models": true,
+      "duration_seconds": 601.0,
+      "has_audio": false,
+      "interval_seconds": null,
+      "analysed_frames": 0,
+      "state": "complete",
+      "visual_policy": {
+        "enabled": false,
+        "reason": "duration_exceeds_visual_limit",
+        "duration_seconds": 601.0,
+        "max_duration_seconds": 600.0,
+        "frame_interval_seconds": null,
+        "planned_frame_count": 0,
+        "frames_per_request": 8
+      },
+      "visual_vectors": 0,
+      "original_owned_media_removed": true,
+      "markdown_path": "/home/tzuo5/gpt projects/rag_favorite/.runtime/videorag/data/sampling-proof/20261004-134224/over-600/derived/8c664af1-20af-444e-9551-2ae31c1ceef4/knowledge.md"
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "review_date": "2026-10-04",
+  "timezone": "America/Chicago",
+  "observed_at_utc": "2026-10-04T07:17:38.646130+00:00",
+  "status": "research_and_plan_updated",
+  "project_root": "/home/tzuo5/gpt projects/rag_favorite",
+  "text_provider": {
+    "backend": "lmstudio",
+    "model": "text-embedding-qwen3-embedding-0.6b",
+    "dimensions": 1024
+  },
+  "local_service_ports": {
+    "1234": {
+      "listening": false
+    },
+    "55432": {
+      "listening": false
+    }
+  },
+  "gpu_snapshot": "NVIDIA GeForce RTX 4060 Laptop GPU, 8188 MiB, 7055 MiB, 595.91.07",
+  "project_environment_packages": {
+    "torch": false,
+    "imagebind": false
+  },
+  "ffmpeg_on_path": false,
+  "ffprobe_on_path": false,
+  "relocation": {
+    "old_root_exists": false,
+    "cli_shebang": "#!/home/tzuo5/rag_favorite/.venv/bin/python",
+    "editable_source": "/home/tzuo5/rag_favorite/src"
+  },
+  "upstream_revisions": {
+    "HKUDS/VideoRAG": "c412a093a820ef7a0e0dda31076ed871136198b3",
+    "facebookresearch/ImageBind": "53680b02d7e37b19b124fa37bae4b6c98c38f5be"
+  },
+  "checkpoint": {
+    "url": "https://dl.fbaipublicfiles.com/imagebind/imagebind_huge.pth",
+    "verified_head_status": 200,
+    "verified_content_length_bytes": 4803584173,
+    "downloaded_this_turn": false,
+    "sha256": null
+  },
+  "video_embedding_real_inference": "not_run",
+  "cpu_gpu_benchmark": "not_run",
+  "codex_actual_connection": "not_run",
+  "linux_password_required": false,
+  "plan": {
+    "phase_1": "historically_verified",
+    "phase_1a": "planned",
+    "video_poc": "planned",
+    "telegram_phase_5": "cancelled",
+    "remaining_working_days_estimate": [
+      15,
+      24
+    ],
+    "optional_remote_extra_days": [
+      2,
+      3
+    ]
+  },
+  "source_files": [
+    {
+      "name": "videorag-readme.md",
+      "url": "https://raw.githubusercontent.com/HKUDS/VideoRAG/c412a093a820ef7a0e0dda31076ed871136198b3/VideoRAG-algorithm/README.md",
+      "sha256": "5c053db209ada709b4dc41854e6b52e70306f38a8ec6e6f059a5ff911bff34ab",
+      "bytes": 13132
+    },
+    {
+      "name": "videorag-feature.py",
+      "url": "https://raw.githubusercontent.com/HKUDS/VideoRAG/c412a093a820ef7a0e0dda31076ed871136198b3/VideoRAG-algorithm/videorag/_videoutil/feature.py",
+      "sha256": "8948b85848b75aac6a65492956b69d955b7bf9ceaabaab3bed3bf1f3f66bb3b6",
+      "bytes": 913
+    },
+    {
+      "name": "videorag-vector.py",
+      "url": "https://raw.githubusercontent.com/HKUDS/VideoRAG/c412a093a820ef7a0e0dda31076ed871136198b3/VideoRAG-algorithm/videorag/_storage/vdb_nanovectordb.py",
+      "sha256": "d02e16b4b8d98b3cf6f6ee16940ca30ba8651c3bc615cf6a7583ffce9c8d7d17",
+      "bytes": 5361
+    },
+    {
+      "name": "videorag-requirements.txt",
+      "url": "https://raw.githubusercontent.com/HKUDS/VideoRAG/c412a093a820ef7a0e0dda31076ed871136198b3/VideoRAG-algorithm/requirements.txt",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "name": "imagebind-model.py",
+      "url": "https://raw.githubusercontent.com/facebookresearch/ImageBind/53680b02d7e37b19b124fa37bae4b6c98c38f5be/imagebind/models/imagebind_model.py",
+      "sha256": "de713318171f94bc6479f6df10153916f19869d175c1360654a00d70e4c0cd66",
+      "bytes": 16719
+    },
+    {
+      "name": "imagebind-data.py",
+      "url": "https://raw.githubusercontent.com/facebookresearch/ImageBind/53680b02d7e37b19b124fa37bae4b6c98c38f5be/imagebind/data.py",
+      "sha256": "55f8b207a687f49bd8880e74bd04c2561d559dfb1ca8b7ede2946b4449b4bdd2",
+      "bytes": 11921
+    },
+    {
+      "name": "imagebind-requirements.txt",
+      "url": "https://raw.githubusercontent.com/facebookresearch/ImageBind/53680b02d7e37b19b124fa37bae4b6c98c38f5be/requirements.txt",
+      "sha256": "4b2c7e3ca5ed0ebc84db8512700ba68a8b7e257521edc10d81afb2a6fc638fe1",
+      "bytes": 392
+    },
+    {
+      "name": "imagebind-model-card.md",
+      "url": "https://raw.githubusercontent.com/facebookresearch/ImageBind/53680b02d7e37b19b124fa37bae4b6c98c38f5be/model_card.md",
+      "sha256": "f12228a8e0b409afb265ff3b3aa5d2f64b9f69806005b751f6786bcff9be0dba",
+      "bytes": 4570
+    },
+    {
+      "name": "imagebind-setup.py",
+      "url": "https://raw.githubusercontent.com/facebookresearch/ImageBind/53680b02d7e37b19b124fa37bae4b6c98c38f5be/setup.py",
+      "sha256": "fa6e13c67d1907ccf9856a79c0d85a83c9bf32240c6dfd57f738f79eea1be017",
+      "bytes": 775
+    },
+    {
+      "name": "imagebind-license.txt",
+      "url": "https://raw.githubusercontent.com/facebookresearch/ImageBind/53680b02d7e37b19b124fa37bae4b6c98c38f5be/LICENSE",
+      "sha256": "9e502ba75fd0fd30cea5497b438a4bc12f07f02bc932a7a6041fd6a18b8f46a0",
+      "bytes": 20848
+    }
+  ]
+}
