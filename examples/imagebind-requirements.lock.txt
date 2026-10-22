@@ -16,7 +16,7 @@ fsspec==2026.7.0
 ftfy==6.3.1
 fvcore==0.1.5.post20221221
 h11==0.16.0
-hf-xet==1.6.0
+hf-xet==1.7.0
 httpcore2==2.13.1
 httpx2==2.13.1
 huggingface-hub==0.36.2
