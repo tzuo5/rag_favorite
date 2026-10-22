@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import json
-import os
-import sys
 import time
 from pathlib import Path
 from typing import Any, Self
@@ -48,49 +45,9 @@ class BrowserSession:
         self.page: Any | None = None
 
     def open(self) -> BrowserSession:
-        if sys.platform != "darwin" and not os.getenv("DISPLAY"):
-            raise BrowserUnavailable(
-                "DISPLAY is unavailable; run the command through xvfb-run"
-            )
-        ensure_private_directory(self.settings.xiaohongshu_session_root)
-        ensure_private_directory(self.settings.xiaohongshu_profile_dir)
-        local_state = self.settings.xiaohongshu_profile_dir / "Local State"
-        if local_state.exists():
-            try:
-                if (
-                    not local_state.is_file()
-                    or local_state.stat().st_size > 5 * 1024 * 1024
-                    or not isinstance(
-                        json.loads(local_state.read_text(encoding="utf-8")),
-                        dict,
-                    )
-                ):
-                    raise ValueError
-            except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
-                raise ProfileCorrupt("persistent Chromium profile is corrupt") from exc
-        try:
-            from playwright.sync_api import sync_playwright
-        except ImportError as exc:
-            raise BrowserUnavailable("Playwright is not installed") from exc
-        try:
-            self._playwright = sync_playwright().start()
-            self.context = self._playwright.chromium.launch_persistent_context(
-                user_data_dir=str(self.settings.xiaohongshu_profile_dir),
-                headless=False,
-                viewport={"width": 1280, "height": 900},
-                locale="zh-CN",
-                args=["--disable-dev-shm-usage"],
-            )
-            self.page = (
-                self.context.pages[0] if self.context.pages else self.context.new_page()
-            )
-            self.page.goto(HOME_URL, wait_until="domcontentloaded", timeout=45_000)
-        except Exception as exc:
-            self.close()
-            raise BrowserUnavailable(
-                "Chromium could not start or reach Xiaohongshu"
-            ) from exc
-        return self
+        raise BrowserUnavailable(
+            "XHS_SESSION_SERVICE_REQUIRED: 请使用 RAG 网页中的登录与验证入口。"
+        )
 
     def close(self) -> None:
         if self.context is not None:

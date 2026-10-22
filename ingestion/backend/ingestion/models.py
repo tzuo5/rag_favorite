@@ -166,6 +166,7 @@ class AccessProbeStatus(StrEnum):
 
 
 class PlatformErrorCode(StrEnum):
+    XHS_SESSION_SERVICE_REQUIRED = "XHS_SESSION_SERVICE_REQUIRED"
     AUTH_EXPIRED = "AUTH_EXPIRED"
     BOT_CHECK = "BOT_CHECK"
     RATE_LIMITED = "RATE_LIMITED"

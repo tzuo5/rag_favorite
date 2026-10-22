@@ -1,10 +1,21 @@
 # 私有网页任务控制台
 
-网页与本地桌面 GUI 共用 `QueueMonitor`、PostgreSQL 和 `queue-control.json`。
+网页通过 `QueueMonitor`、PostgreSQL 和 `queue-control.json` 管理队列。
+Linux 桌面图标直接在浏览器打开此网页，原生 GUI 已移除。
 手机与电脑看到的是同一任务队列。关闭浏览器不影响后台 worker。
-页面适配手机，包含统计、模型调用、任务搜索与筛选、分页、详情、结构化日志，
-以及全局和单任务 Start / Stop。每 3 秒刷新一次；数据过时会明确提示并禁用操作。
-任务进度只表示当前阶段，不估算总完成百分比。
+页面分为总览、任务、运行、账号四个入口。小于 1024 CSS px 使用底部导航和任务卡片，
+1024 CSS px 起使用侧栏、紧凑列表和右侧详情。手机详情可展开、关闭，也可用浏览器返回键关闭。
+支持跟随系统、浅色、深色主题，设置保存在当前浏览器。
+
+总览先显示登录或验证提醒，再显示队列状态、执行中、等待中、可检索完成及需处理数量。
+失败和受阻按原始原因码归并；未知原因不会被推断为登录问题。
+任务搜索覆盖服务配置的整个知识库，按标题、任务 ID、错误码进行字面子串匹配；
+可按状态、原因和已有集合筛选，每页默认 40 项。
+
+前台每 3 秒刷新概览和当前任务状态。列表成员或顺序变化时显示“列表有更新”，点击后才重排；
+修改查询条件或翻页立即载入对应结果。隐藏页面停止前端轮询，返回后立即更新。
+断网时只保留同一查询条件的数据，标记过时并禁用相关操作。
+任务进度只表示当前阶段；HTTP 成功、有效输出和发布后可检索分别展示。
 
 ## 安装和接入
 
@@ -76,9 +87,11 @@ Secure / HttpOnly / SameSite Cookie、Origin 和 CSRF 校验。
 
 ## 操作、接口和错误
 
-- 全局 Start 恢复领取，必要时启动已有 worker；不自动恢复单独暂停的任务。
-- 全局 Stop 暂停新任务领取；已领取任务继续完成、发布及清理，不强制杀进程。
-- 单任务 Start 恢复暂停或重试失败 / 受阻任务；单任务 Stop 暂停后续领取。
+- “恢复队列”经确认后恢复领取，必要时启动已有 worker；不自动恢复单独暂停的任务。
+- “暂停队列”经确认后暂停领取新阶段和新模型调用；正在执行的操作保存结果后暂停。
+  全局暂停不改变任务的展示状态，等待任务仍计入“等待中”。
+- 单任务暂停、恢复、重试直接执行，在详情底部保留执行结果，刷新不覆盖操作反馈。
+  “已暂停”仅表示单独暂停的等待任务。
 - 禁止对已完成或其他知识库的任务执行操作。重复请求与并发操作会被拒绝。
 - 数据库离线时保留上次快照并标为过时；恢复后自动更新。锁超时或后台错误
   不回传原始异常，页面提示结果未能确认，须刷新核对，避免把错误当成成功。
@@ -89,6 +102,23 @@ Secure / HttpOnly / SameSite Cookie、Origin 和 CSRF 校验。
 `start_job`、`stop_job`，`request_id` 为每次操作生成的 UUID。
 状态接口返回 `{snapshot, stale, age_seconds, error}`；过时返回 503 并保留已有数据。
 快照仅公开明确允许的任务、模型与结构化日志字段，不返回 provider 配置及原始载荷。
+
+网页查询接口沿用同一鉴权、来源限制和字段白名单：
+
+| 接口 | 参数与响应 |
+| --- | --- |
+| `GET /api/jobs` | `q`、`state`、`reason`、`collection`、`page`、`page_size`；默认 40 项，上限 100。返回 `items`、`total`、`page`、`page_size`、`captured_at`。 |
+| `GET /api/jobs/{id}` | 当前知识库的一项任务，响应 `{item}`；不存在或属于其他库均返回 404。 |
+| `GET /api/jobs/updates?ids=…` | 逗号分隔 UUID，最多 100 项；返回 `items`、`missing_ids`、`captured_at`。 |
+| `GET /api/snapshot?include_jobs=false` | 省略任务和阶段明细数组，增加全库 `task_summary`（展示状态数量、异常原因汇总、已有集合）。 |
+
+不传 `include_jobs` 时保留完整 `QueueMonitor.snapshot()` 快照合约。
+列表、筛选和统计共用 `display_state` 规则；队列排名在筛选、分页之前计算。
+只读查询使用一致性事务和 5 秒 SQL 超时，不接受客户端指定知识库。
+
+账号页保留小红书二维码、二维码链接、短信输入和可点击/拖动的验证画面。
+可放大画面或横屏使用；拖动期间不更新画面。验证码提交后清空，不写入页面日志。
+运行页展示最近保留的最多 20 条调用及 40 条运行日志，不代表任务完整历史。
 
 ## 验收、运行和卸载
 
@@ -103,12 +133,25 @@ RAG_GUI_TEST_CONFIG="$PWD/.runtime/phase1/config.toml" .venv/bin/python -m pytes
 ```
 
 数据库集成测试使用随机隔离知识库，结束后清理测试任务，不操作生产队列。
+UI 自动化与全库查询验收：
+
+```bash
+RAG_GUI_TEST_CONFIG="$PWD/.runtime/phase1/config.toml" .venv/bin/python -m pytest tests/test_web_jobs.py -q
+RAG_BROWSER_TEST=1 RAG_UI_TEST_ENGINES=chromium,webkit .venv/bin/python -m pytest tests/test_web_console_browser.py -q
+```
+
+浏览器用例拦截所有请求并使用合成数据。需预先安装对应 Playwright 浏览器及运行依赖；
+也可通过 `RAG_UI_WEBKIT_EXECUTABLE` 指向隔离的 WebKit 启动器。
+自动化覆盖五种视口、深浅主题、详情返回、稳定刷新、搜索分页、断网和会话过期、验证画面坐标。
+当前实施记录、回滚方法及真机待验收范围见
+[双端 UI 实施记录](implementation/web-console-ui-20261011.md)。
+
 真实手机蜂窝网络、外部电脑网络、未批准设备和其他账号必须分别实测，
 HTTP 本机测试和模拟代理头不能代替这些验收。
 user systemd 服务随用户管理器启动；在管理器停止时不可用，需根据服务器
 已有设置确认开机无人登录运行。服务器停机、休眠或失去网络时无法访问。
 
-停用网站（不影响现有 GUI 和 worker）：
+停用网站（后台 worker 继续运行，桌面快捷方式将无法访问）：
 
 ```bash
 tailscale serve --https=443 off
@@ -118,3 +161,5 @@ tailscale serve --https=443 off
 关闭 443 前检查没有其他服务使用该映射；卸载保留配置与凭据，按需自行删除。
 此方案不保证账号、已授权设备或服务器被攻陷后仍安全；遗失设备应立即撤销，
 必要时更换网页密码并重启服务。
+
+节点轮换与桌面入口迁移见[实施记录](implementation/xhs-proxy-80-and-desktop-web-20261011.md)。

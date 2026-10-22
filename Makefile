@@ -10,7 +10,7 @@ help:
 	@echo "check           Run the complete release validation"
 
 install-dev:
-	$(PYTHON) -m pip install -e ".[mcp,ingestion,dev]"
+	$(PYTHON) -m pip install -e ".[mcp,ingestion,web,video-sources,dev]"
 
 lint:
 	$(PYTHON) -m ruff check src/rag_favorite tests scripts

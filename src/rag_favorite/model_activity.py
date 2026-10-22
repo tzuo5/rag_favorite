@@ -13,6 +13,8 @@ from datetime import UTC, datetime
 from functools import wraps
 from uuid import uuid4
 
+from .observation import emit, observation_job
+
 KEYS = {"CCR", "ASR", "Embedding", "ImageBind"}
 _job = ContextVar("rag_model_activity_job", default=None)
 _call = ContextVar("rag_model_activity_call", default=None)
@@ -217,13 +219,23 @@ def annotate_call(**metadata):
         "retryable",
         "request_id",
     }
+    safe = {k: v for k, v in metadata.items() if k in allowed}
+    emit(
+        context[0],
+        context[1],
+        "model_diagnostics",
+        call_id=current[1],
+        model=current[0],
+        operation=current[2],
+        metadata=safe,
+    )
     _write(
         context[0],
         current[0],
         "diagnostics",
         current[1],
         current[2],
-        metadata={k: v for k, v in metadata.items() if k in allowed},
+        metadata=safe,
     )
 
 
@@ -231,7 +243,8 @@ def annotate_call(**metadata):
 def job_activity(video, job_id):
     token = _job.set((video, str(job_id)))
     try:
-        yield
+        with observation_job(video, job_id):
+            yield
     finally:
         _job.reset(token)
 
@@ -245,6 +258,14 @@ def activity_call(key, operation):
     video, _ = context
     call_id = uuid4().hex
     token = _call.set((key, call_id, operation))
+    emit(
+        video,
+        context[1],
+        "model_start",
+        call_id=call_id,
+        model=key,
+        operation=operation,
+    )
     _write(video, key, "running", call_id, operation)
     start, status = time.monotonic(), "success"
     try:
@@ -253,7 +274,18 @@ def activity_call(key, operation):
         status = "failure" if isinstance(exc, Exception) else "interrupted"
         raise
     finally:
-        _write(video, key, status, call_id, operation, time.monotonic() - start)
+        duration = time.monotonic() - start
+        emit(
+            video,
+            context[1],
+            "model_end",
+            call_id=call_id,
+            model=key,
+            operation=operation,
+            status=status,
+            duration_seconds=duration,
+        )
+        _write(video, key, status, call_id, operation, duration)
         _call.reset(token)
 
 
@@ -272,4 +304,13 @@ def model_call(key, operation):
 def cache_hit(key, operation):
     context = _job.get()
     if context is not None:
-        _write(context[0], key, "cached", uuid4().hex, operation)
+        identifier = uuid4().hex
+        emit(
+            context[0],
+            context[1],
+            "model_cached",
+            call_id=identifier,
+            model=key,
+            operation=operation,
+        )
+        _write(context[0], key, "cached", identifier, operation)

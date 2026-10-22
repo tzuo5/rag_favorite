@@ -352,6 +352,9 @@ def classify_input_url(
         )
     if host not in XIAOHONGSHU_SHORT_HOSTS:
         return classify_url(url)
+    if opener is None:
+        from backend.ingestion.xhs_transport import require_managed_xhs
+        require_managed_xhs(url)
 
     validate_public_url(url)
     request = urllib.request.Request(

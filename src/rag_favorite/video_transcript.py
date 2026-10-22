@@ -123,9 +123,16 @@ def partition_transcript(
         ]
     if any(s["end"] > duration + 1 for s in transcript):
         raise ValueError("Transcript exceeds the video duration.")
+    count = math.ceil(duration / length)
+    # A container's audio can outlast its final video frame by milliseconds.
+    # Preserve that time and its text inside the preceding segment instead of
+    # asking the video encoder to process an empty, subsecond tail.
+    if count > 1 and duration - (count - 1) * length < 1:
+        count -= 1
     result = []
-    for index in range(math.ceil(duration / length)):
-        start, end = index * length, min((index + 1) * length, duration)
+    for index in range(count):
+        start = index * length
+        end = duration if index == count - 1 else (index + 1) * length
         texts = [
             s["text"] for s in transcript if s["start"] < end and s["end"] >= start
         ]

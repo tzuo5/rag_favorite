@@ -1,0 +1,509 @@
+{
+  "captured_at": "2026-10-11T01:52:50.269114+00:00",
+  "timezone": "America/Chicago",
+  "validation": {
+    "pytest_passed": 440,
+    "pytest_skipped": 20,
+    "ruff": "passed",
+    "javascript_syntax": "passed",
+    "isolated_ccr_body_reset_seconds": 0.119,
+    "ccr_model_and_routing_preserved": true
+  },
+  "repair_jobs": [
+    {
+      "id": "private-job-001",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "LOCAL_ENCODER_HTTP_ERROR",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-002",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "LOCAL_ENCODER_HTTP_ERROR",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-003",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "FileNotFoundError",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-004",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "XHS_IMAGE_NOTE_INCOMPLETE",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-005",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "XHS_IMAGE_NOTE_INCOMPLETE",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-006",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-007",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-008",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-009",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "VISUAL_FRAME_EXTRACTION_INCOMPLETE",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-010",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-011",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-012",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-013",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-014",
+      "state": "deleted_by_user",
+      "original_error": "XHS_SOURCE_TOKEN_REFRESH_UNAVAILABLE",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-015",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-016",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-017",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-018",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "LOCAL_ENCODER_HTTP_ERROR",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-019",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "VISUAL_FRAME_EXTRACTION_INCOMPLETE",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-020",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-021",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-022",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-023",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "SUMMARY_VALIDATION_FAILED",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-024",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-025",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-026",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-027",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "VISUAL_FRAME_EXTRACTION_INCOMPLETE",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-028",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "SUMMARY_VALIDATION_FAILED",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-029",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "SUMMARY_VALIDATION_FAILED",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-030",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_RESPONSE_INCOMPLETE",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-031",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-032",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-033",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "SUMMARY_VALIDATION_FAILED",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-034",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "LOCAL_ENCODER_HTTP_ERROR",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-035",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_RESPONSE_INVALID_JSON",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-036",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "LOCAL_ENCODER_HTTP_ERROR",
+      "redownload_required": false
+    },
+    {
+      "id": "private-job-037",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "VISUAL_FRAME_EXTRACTION_INCOMPLETE",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-038",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "VISUAL_FRAME_EXTRACTION_INCOMPLETE",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-039",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "VISUAL_FRAME_EXTRACTION_INCOMPLETE",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-040",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "LOCAL_ENCODER_HTTP_ERROR",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-041",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "VISUAL_FRAME_EXTRACTION_INCOMPLETE",
+      "redownload_required": true
+    },
+    {
+      "id": "private-job-042",
+      "state": "queued",
+      "stage": "queued",
+      "error_code": null,
+      "original_error": "CCR_REQUEST_FAILED",
+      "redownload_required": false
+    }
+  ],
+  "repair_counts": {
+    "queued": 41,
+    "deleted_by_user": 1
+  },
+  "all_historical_jobs_completed": false,
+  "damaged_retained_assets": 8,
+  "inspected_retained_assets": 28,
+  "fresh_source_recovery_check": {
+    "job_id": "private-job-027",
+    "bytes": 26006311,
+    "container_verified": true,
+    "all_packets_decoded": true,
+    "production_job_state_changed": false
+  },
+  "deleted_note": {
+    "job_id": "private-job-014",
+    "queue_and_sources_absent": true,
+    "work_absent": true,
+    "derived_absent": true
+  },
+  "index_gap": {
+    "job_id": "private-job-043",
+    "published_in_active_index": true
+  },
+  "tail_inference": [
+    {
+      "job_id": "private-job-034",
+      "duration": 30,
+      "frames": 240,
+      "vector_length": 1024,
+      "l2": 1,
+      "configured_space_matches": true,
+      "status": "passed"
+    },
+    {
+      "job_id": "private-job-036",
+      "duration": 60,
+      "frames": 480,
+      "vector_length": 1024,
+      "l2": 1,
+      "configured_space_matches": true,
+      "status": "passed"
+    }
+  ],
+  "current_counts": {
+    "complete": 839,
+    "duplicate": 92,
+    "queued": 1592,
+    "running": 5
+  },
+  "call_metrics": {
+    "window_start": "2026-10-10T01:52:50.268990+00:00",
+    "window_end": "2026-10-11T01:52:50.268990+00:00",
+    "scope": "retained_completed_ccr_calls",
+    "retained_calls": 257,
+    "attempts": 189,
+    "http_success": 189,
+    "valid_outputs": 188,
+    "unknown_attempts": 3,
+    "searchable_completed": 839,
+    "publication_scope": "current_library_active_search_index"
+  },
+  "worker": {
+    "ActiveState": "active",
+    "SubState": "running",
+    "MainPID": "2024724"
+  },
+  "control": {
+    "paused": false,
+    "paused_jobs": []
+  },
+  "pipeline": {
+    "available": true,
+    "circuit_until": null,
+    "stages": {
+      "download": {
+        "waiting": 0,
+        "running": 0,
+        "retry_wait": 0,
+        "blocked": 0
+      },
+      "prepare": {
+        "waiting": 2,
+        "running": 0,
+        "retry_wait": 0,
+        "blocked": 0
+      },
+      "llm": {
+        "waiting": 2,
+        "running": 1,
+        "retry_wait": 0,
+        "blocked": 0
+      },
+      "publish": {
+        "waiting": 0,
+        "running": 0,
+        "retry_wait": 0,
+        "blocked": 0
+      }
+    },
+    "jobs": [
+      {
+        "job_id": "private-job-044",
+        "stage": "llm",
+        "status": "running",
+        "owner": "<local-worker>",
+        "retry_at": "2026-10-10T20:50:26.108316-05:00",
+        "error_code": null,
+        "elapsed_seconds": 412.5547053529881
+      },
+      {
+        "job_id": "private-job-045",
+        "stage": "llm",
+        "status": "waiting",
+        "owner": "<local-worker>",
+        "retry_at": "2026-10-10T20:38:19.847497-05:00",
+        "error_code": null,
+        "elapsed_seconds": 0.0
+      },
+      {
+        "job_id": "private-job-046",
+        "stage": "prepare",
+        "status": "waiting",
+        "owner": "<local-worker>",
+        "retry_at": "2026-10-10T20:23:33.028832-05:00",
+        "error_code": null,
+        "elapsed_seconds": 0.0
+      },
+      {
+        "job_id": "private-job-047",
+        "stage": "llm",
+        "status": "waiting",
+        "owner": "<local-worker>",
+        "retry_at": "2026-10-10T20:21:11.901335-05:00",
+        "error_code": null,
+        "elapsed_seconds": 0.0
+      },
+      {
+        "job_id": "private-job-048",
+        "stage": "prepare",
+        "status": "waiting",
+        "owner": "<local-worker>",
+        "retry_at": "2026-10-10T20:17:22.708070-05:00",
+        "error_code": null,
+        "elapsed_seconds": 0.0
+      }
+    ],
+    "running": [
+      {
+        "job_id": "private-job-044",
+        "stage": "llm",
+        "status": "running",
+        "owner": "<local-worker>",
+        "retry_at": "2026-10-10T20:50:26.108316-05:00",
+        "error_code": null,
+        "elapsed_seconds": 412.5547053529881
+      }
+    ]
+  },
+  "acceptance_boundary": "Historical jobs remain unfinished until validated summaries are published and owned media cleanup completes.",
+  "_publication_note": "Private source identifiers and local runtime details are anonymized; original evidence remains local."
+}

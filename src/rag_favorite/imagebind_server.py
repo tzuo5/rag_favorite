@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import threading
 import time
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 
 from .video_config import load_video_config
@@ -91,6 +92,24 @@ def create_encoder_app(config=None):
 
     asr_state = {"model": None}
 
+    @contextmanager
+    def asr_device_slot():
+        # Serialize GPU users and swap weights to fit this laptop's shared VRAM.
+        with asr_lock, gpu_lock if config.asr_device == "cuda" else nullcontext():
+            swapped = config.asr_device == "cuda" and config.device == "cuda"
+            try:
+                if swapped:
+                    model.to("cpu")
+                    torch.cuda.empty_cache()
+                if asr_state["model"] is not None and config.asr_device == "cuda":
+                    asr_state["model"].model.load_model()
+                yield
+            finally:
+                if config.asr_device == "cuda" and asr_state["model"] is not None:
+                    asr_state["model"].model.unload_model(to_cpu=True)
+                if swapped:
+                    model.to(config.device)
+
     @app.get("/health")
     def health(authorization: str | None = Header(default=None)):
         authorize(authorization)
@@ -138,12 +157,12 @@ def create_encoder_app(config=None):
             raise HTTPException(503, "Local ASR model is not configured.")
         from faster_whisper import WhisperModel
 
-        with asr_lock:
+        with asr_device_slot():
             if asr_state["model"] is None:
                 asr_state["model"] = WhisperModel(
                     str(config.asr_model),
-                    device="cpu",
-                    compute_type="int8",
+                    device=config.asr_device,
+                    compute_type=config.asr_compute_type,
                     cpu_threads=4,
                     local_files_only=True,
                 )
@@ -171,7 +190,7 @@ def create_encoder_app(config=None):
                 "segments": segments,
                 "language": info.language,
                 "language_probability": info.language_probability,
-                "provider": f"local-faster-whisper-{config.asr_model.name.removeprefix('asr-')}-cpu-int8",
+                "provider": f"local-faster-whisper-{config.asr_model.name.removeprefix('asr-')}-{config.asr_device}-{config.asr_compute_type}",
             }
 
     @app.post("/embed-video")

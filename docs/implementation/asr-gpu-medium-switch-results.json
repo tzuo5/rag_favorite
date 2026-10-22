@@ -1,0 +1,51 @@
+{
+  "config": {
+    "asr_device": "cuda",
+    "asr_compute_type": "float16",
+    "asr_model": "/home/tzuo5/gpt projects/rag_favorite/.runtime/video-encoder/asr-medium"
+  },
+  "health": {
+    "ok": true,
+    "space_id": "8b98ad677fa05e5097ce7bc14e526945220d05020b1a54d6f2a925dd8f9b35c3",
+    "loads": 1,
+    "load_seconds": 10.969,
+    "device": "cuda",
+    "dtype": "float16"
+  },
+  "transcriptions": [
+    {
+      "seconds": 4.720777916983934,
+      "provider": "local-faster-whisper-medium-cuda-float16",
+      "segments": 20,
+      "language": "zh"
+    },
+    {
+      "seconds": 3.389173628005665,
+      "provider": "local-faster-whisper-medium-cuda-float16",
+      "segments": 20,
+      "language": "zh"
+    }
+  ],
+  "visual_after_asr_1": {
+    "seconds": 0.22855008399346843,
+    "vector_dimension": 1024,
+    "space_id": "8b98ad677fa05e5097ce7bc14e526945220d05020b1a54d6f2a925dd8f9b35c3"
+  },
+  "visual_after_asr_2": {
+    "seconds": 0.048940575012238696,
+    "vector_dimension": 1024,
+    "space_id": "8b98ad677fa05e5097ce7bc14e526945220d05020b1a54d6f2a925dd8f9b35c3"
+  },
+  "video_after_asr": {
+    "seconds": 0.907809497002745,
+    "dimension": 1024,
+    "space_id": "8b98ad677fa05e5097ce7bc14e526945220d05020b1a54d6f2a925dd8f9b35c3"
+  },
+  "checks": {
+    "related_tests": "75 passed",
+    "imagebind_service": "active",
+    "video_worker_service": "active",
+    "queue_paused": false,
+    "embedding_model": "retained"
+  }
+}

@@ -26,7 +26,7 @@ def test_publication_cleanup_race_does_not_stop_other_consumers(tmp_path, monkey
         def fetchall(self):
             return [(uuid4(), {"asset_id": asset.name})]
 
-    monkeypatch.setattr(video_pipeline, "connect_database", lambda *_: Database())
+    monkeypatch.setattr(video_pipeline, "connect_database", lambda *_, **__: Database())
     original_stat = Path.stat
     checks = 0
 

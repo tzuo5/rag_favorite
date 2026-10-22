@@ -3,7 +3,7 @@
 import json
 import os
 import threading
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import replace
 from types import SimpleNamespace
 from uuid import uuid4
@@ -517,6 +517,20 @@ def test_admission_frontier_and_temp_budget_are_bounded(isolated):
     assert pipeline.initialize_jobs(isolated.config, limited) == 3
 
 
+def test_recovery_assets_are_included_in_temp_budget_once(isolated):
+    asset_id = "a" * 32
+    isolated.video.root.mkdir(parents=True)
+    assets = isolated.video.root / "assets"
+    assets.mkdir()
+    (assets / asset_id).write_bytes(b"retained-corrupt-download")
+    for _ in range(2):
+        jid = isolated.add(payload={"superseded_asset_ids": [asset_id]})
+        isolated.stage(jid)
+    assert pipeline.temporary_bytes(isolated.config, isolated.video) == len(
+        b"retained-corrupt-download"
+    )
+
+
 def test_terminal_phantom_rows_reconcile_after_active_guard_exits(isolated):
     complete = isolated.add(state="complete")
     duplicate = isolated.add(state="duplicate")
@@ -538,3 +552,311 @@ def test_terminal_phantom_rows_reconcile_after_active_guard_exits(isolated):
     assert row(isolated, complete, "llm")["status"] == "done"
     snapshot = pipeline.pipeline_snapshot(isolated.config, isolated.video)
     assert snapshot["jobs"] == [] and snapshot["running"] == []
+
+
+def test_six_ccr_slots_share_a_limit_and_waiters_resume_after_release(
+    isolated, monkeypatch
+):
+    from rag_favorite.pipeline_fence import llm_slot
+
+    video = replace(isolated.video, ccr_concurrency=6)
+    monkeypatch.setattr("rag_favorite.config.load_config", lambda: isolated.config)
+    entered, release = threading.Event(), threading.Event()
+    errors = []
+
+    def backfill_request():
+        try:
+            with llm_slot(video):
+                entered.set()
+                assert release.wait(5)
+        except Exception as error:  # noqa: BLE001 - report thread failures to pytest
+            errors.append(error)
+
+    with ExitStack() as held:
+        for _ in range(5):
+            held.enter_context(llm_slot(video))
+        waiter = threading.Thread(target=backfill_request)
+        try:
+            with llm_slot(video):
+                waiter.start()
+                assert not entered.wait(0.3), "Seventh request exceeded the shared cap"
+            assert entered.wait(3), "Released slot did not admit the waiting request"
+        finally:
+            release.set()
+            waiter.join(5)
+    assert not waiter.is_alive()
+    assert not errors
+
+
+def test_waiting_ccr_request_obeys_pause(isolated, monkeypatch):
+    from rag_favorite.pipeline_fence import llm_slot
+
+    video = replace(isolated.video, ccr_concurrency=6)
+    monkeypatch.setattr("rag_favorite.config.load_config", lambda: isolated.config)
+    stopped = threading.Event()
+    errors = []
+
+    def request():
+        try:
+            with llm_slot(video):
+                errors.append(AssertionError("Paused request was admitted"))
+        except PipelinePaused:
+            stopped.set()
+        except Exception as error:  # noqa: BLE001 - report thread failures to pytest
+            errors.append(error)
+
+    with ExitStack() as held:
+        for _ in range(6):
+            held.enter_context(llm_slot(video))
+        waiter = threading.Thread(target=request)
+        waiter.start()
+        set_control(video, paused=True)
+        assert stopped.wait(3)
+        waiter.join(5)
+    assert not waiter.is_alive()
+    assert not errors
+
+
+def test_six_concurrency_admits_enough_jobs_without_unbounding_frontier(isolated):
+    video = replace(isolated.video, ccr_concurrency=6)
+    for _ in range(13):
+        isolated.add()
+    assert pipeline.initialize_jobs(isolated.config, video) == 10
+    assert pipeline.initialize_jobs(isolated.config, video) == 0
+
+
+@pytest.mark.parametrize("concurrency", [6, 10])
+def test_coordinator_processes_llm_jobs_at_once_without_exceeding_cap(
+    isolated, monkeypatch, concurrency
+):
+    from rag_favorite import video_worker
+    from rag_favorite.pipeline_fence import llm_slot
+
+    video = replace(isolated.video, ccr_concurrency=concurrency)
+    monkeypatch.setattr("rag_favorite.config.load_config", lambda: isolated.config)
+    ids = [isolated.add() for _ in range(concurrency + 1)]
+    for job_id in ids:
+        isolated.stage(job_id, "llm")
+    all_slots, release = threading.Event(), threading.Event()
+    lock = threading.Lock()
+    active, peak, entered = 0, 0, []
+    errors = []
+
+    def process(config, current_video, job, *, phase):
+        nonlocal active, peak
+        if phase == "llm":
+            with llm_slot(current_video):
+                with lock:
+                    active += 1
+                    peak = max(peak, active)
+                    entered.append(job["id"])
+                    if active == concurrency:
+                        all_slots.set()
+                try:
+                    assert release.wait(10)
+                finally:
+                    with lock:
+                        active -= 1
+        elif phase == "publish":
+            with connect_database(config, register_pgvector=False) as connection:
+                connection.execute(
+                    "UPDATE public.rag_video_jobs SET state='complete' WHERE id=%s",
+                    (job["id"],),
+                )
+        else:
+            raise AssertionError("Prepared fixture unexpectedly reached " + phase)
+
+    monkeypatch.setattr(video_worker, "process", process)
+
+    def run():
+        try:
+            pipeline.run_pipeline(isolated.config, video, max_jobs=concurrency + 1)
+        except Exception as error:  # noqa: BLE001 - report thread failures to pytest
+            errors.append(error)
+
+    coordinator = threading.Thread(target=run)
+    coordinator.start()
+    try:
+        assert all_slots.wait(8), "The stage-consumer lock still serialized LLM work"
+        with lock:
+            assert active == peak == concurrency and len(entered) == concurrency
+    finally:
+        release.set()
+        coordinator.join(20)
+    assert not coordinator.is_alive()
+    assert not errors
+    assert peak == concurrency and set(entered) == set(ids)
+    with connect_database(isolated.config, register_pgvector=False) as connection:
+        assert (
+            connection.execute(
+                "SELECT count(*) FROM public.rag_video_jobs WHERE id=ANY(%s::uuid[]) AND state='complete'",
+                (ids,),
+            ).fetchone()[0]
+            == concurrency + 1
+        )
+
+
+def test_xhs_auth_gate_preserves_other_sources_and_downloaded_stages(isolated):
+    payload = {"source_url": "https://www.xiaohongshu.com/explore/" + "a" * 24}
+    first = isolated.add(payload=payload, priority=100)
+    isolated.stage(first)
+    with claim(isolated) as (job, owner, _):
+        pipeline.fail_stage(
+            isolated.config,
+            isolated.video,
+            job,
+            "download",
+            owner,
+            ProviderUnavailable("XHS_LOGIN_REQUIRED"),
+            0.1,
+        )
+    assert row(isolated, first)["error"] == "XHS_LOGIN_REQUIRED"
+    waiting = isolated.add(payload=payload, priority=90)
+    isolated.stage(waiting)
+    local = isolated.add(priority=1)
+    isolated.stage(local)
+    prepared = isolated.add(payload=payload)
+    isolated.stage(prepared, "prepare")
+    with claim(isolated) as (job, owner, _):
+        assert job["id"] == local
+    with claim(isolated, "prepare") as (job, owner, _):
+        assert job["id"] == prepared
+    assert pipeline.pipeline_snapshot(isolated.config, isolated.video)[
+        "xhs_login_required"
+    ]
+    # Gated sources cannot consume all admission slots ahead of unrelated work.
+    pending = isolated.add(payload=payload, priority=100)
+    other = isolated.add(priority=1)
+    pipeline.initialize_jobs(isolated.config, isolated.video)
+    assert not isolated.execute(
+        "SELECT 1 FROM rag_video_pipeline WHERE job_id=%s", (pending,)
+    )
+    assert isolated.execute(
+        "SELECT 1 FROM rag_video_pipeline WHERE job_id=%s", (other,)
+    )
+
+
+@pytest.mark.parametrize("pause_mode", ["xhs_auth", "job_pause"])
+def test_paused_download_backlog_leaves_admission_room(isolated, pause_mode):
+    capacity = isolated.video.pipeline_prefetch + isolated.video.ccr_concurrency + 2
+    payload = {"source_url": "https://www.xiaohongshu.com/explore/" + "a" * 24}
+    paused = []
+    for _ in range(capacity):
+        job_id = isolated.add(payload=payload)
+        isolated.stage(job_id)
+        paused.append(job_id)
+    if pause_mode == "xhs_auth":
+        isolated.execute(
+            "INSERT INTO rag_video_pipeline_control(library_id,xhs_login_required) "
+            "VALUES(%s,true)",
+            (isolated.lid,),
+        )
+    else:
+        for job_id in paused:
+            set_control(isolated.video, job_id=job_id, job_paused=True)
+
+    # A running download still occupies capacity even after its source is paused.
+    active = isolated.add(state="running", payload=payload)
+    isolated.stage(active, status="running")
+    if pause_mode == "job_pause":
+        set_control(isolated.video, job_id=active, job_paused=True)
+    ready = {isolated.add() for _ in range(capacity)}
+
+    assert pipeline.initialize_jobs(isolated.config, isolated.video) == capacity - 1
+    assert pipeline.initialize_jobs(isolated.config, isolated.video) == 0
+    with claim(isolated) as (job, _, _):
+        assert job["id"] in ready
+    assert all(row(isolated, job_id)["status"] == "queued" for job_id in paused)
+
+
+def test_xhs_transient_failures_retry_then_cool_down_and_reset(isolated):
+    payload = {"source_url": "https://www.xiaohongshu.com/explore/" + "a" * 24}
+    first = isolated.add(payload=payload, priority=100)
+    isolated.stage(first)
+    for attempt in range(1, 4):
+        with claim(isolated) as (job, owner, _):
+            assert job["attempts"] == attempt
+            pipeline.fail_stage(
+                isolated.config,
+                isolated.video,
+                job,
+                "download",
+                owner,
+                ProviderUnavailable("XHS_SOURCE_FETCH_FAILED", retryable=True),
+                0.1,
+            )
+        assert row(isolated, first)["status"] == (
+            "queued" if attempt < 3 else "blocked"
+        )
+        isolated.execute(
+            "UPDATE rag_video_pipeline SET retry_at=now() WHERE job_id=%s", (first,)
+        )
+    second = isolated.add(payload=payload)
+    isolated.stage(second)
+    with claim(isolated) as (job, owner, _):
+        assert job is None
+    gate = isolated.execute(
+        "SELECT xhs_failures,xhs_circuit_until>now() FROM rag_video_pipeline_control WHERE library_id=%s",
+        (isolated.lid,),
+    )[0]
+    assert gate == (3, True)
+    isolated.execute(
+        "UPDATE rag_video_pipeline_control SET xhs_circuit_until=now()-interval '1 second' WHERE library_id=%s",
+        (isolated.lid,),
+    )
+    with claim(isolated) as (job, owner, _):
+        assert job["id"] == second
+        job["payload"]["asset_id"] = (
+            "a" * 32
+        )  # process() mutates the payload on success.
+        pipeline.finish_stage(
+            isolated.config, isolated.video, job, "download", owner, 0.1
+        )
+    assert isolated.execute(
+        "SELECT xhs_failures,xhs_circuit_until FROM rag_video_pipeline_control WHERE library_id=%s",
+        (isolated.lid,),
+    )[0] == (0, None)
+
+
+def test_historical_xhs_recovery_preserves_preimage_and_never_requeues(
+    isolated, tmp_path
+):
+    from scripts.recover_xhs_downloads import recover
+
+    url = "https://www.xiaohongshu.com/explore/" + "a" * 24
+    candidate = isolated.add(
+        state="complete", payload={"source_url": url + "?xsec_token=private"}
+    )
+    target = isolated.add(
+        state="blocked", payload={"source_url": url, "supersedes": ["original"]}
+    )
+    isolated.stage(target, status="blocked")
+    isolated.execute(
+        "UPDATE rag_video_jobs SET stage='failed:download',error_code='ProviderUnavailable' WHERE id=%s",
+        (target,),
+    )
+    isolated.execute(
+        "INSERT INTO rag_video_pipeline_control(library_id,xhs_login_required) VALUES(%s,true)",
+        (isolated.lid,),
+    )
+    manifest = tmp_path / "recovery" / "before.json"
+    result = recover(isolated.config, isolated.video, manifest, apply=True)
+    assert result["restored"] == 1 and result["jobs"] == 1
+    assert manifest.stat().st_mode & 0o077 == 0
+    original = json.loads(manifest.read_text())["jobs"][0]["original_payload"]
+    assert original["source_url"] == url
+    state, code, payload = isolated.execute(
+        "SELECT state,error_code,payload FROM rag_video_jobs WHERE id=%s", (target,)
+    )[0]
+    assert state == "blocked" and code == "XHS_SOURCE_VALIDATION_REQUIRED"
+    assert payload["source_url"].endswith("xsec_token=private")
+    assert payload["supersedes"] == ["original"]
+    assert row(isolated, target)["status"] == "blocked"
+    assert (
+        isolated.execute("SELECT state FROM rag_video_jobs WHERE id=%s", (candidate,))[
+            0
+        ][0]
+        == "complete"
+    )
+    with pytest.raises(RuntimeError, match="never overwrite"):
+        recover(isolated.config, isolated.video, manifest, apply=True)

@@ -17,6 +17,7 @@ from .config import ConfigError
 from .database import connect_database
 from .embedding import client_from_config, embedding_space_id
 from .indexes import INDEX_LOCK, assert_write_snapshot, resolve_index
+from .observation import timed
 from .pipeline_fence import assert_owner
 from .rag import chunk_text
 from .video_provider import CCRProvider, ProviderUnavailable, provider_call_kind
@@ -141,6 +142,7 @@ def summary_numbers(text: str) -> set[str]:
     return set(_NUMBERS.findall(text.replace("下一份工作", "下份工作")))
 
 
+@timed("validate_and_render_summary")
 def render_summary(raw: dict, *, title: str, source: str, segments: list[dict]) -> str:
     """Reject unsupported numbers/quotes; preserve source uncertainty explicitly."""
     by_ordinal = {s["ordinal"]: s for s in segments}
@@ -342,6 +344,7 @@ def _assert_generation_source(
         raise ConfigError("SUMMARY_EVIDENCE_CHANGED")
 
 
+@timed("summary_generate_or_publish")
 def summarize_job(
     config, video, job_id: str, *, provider=None, encoder=None, phase="all"
 ) -> dict:
@@ -490,7 +493,8 @@ def summarize_job(
                         )
                     try:
                         with provider_call_kind(
-                            provider, "content_repair" if validation_error else "initial"
+                            provider,
+                            "content_repair" if validation_error else "initial",
                         ):
                             raw = provider.json(instruction, attempt_request)
                     except ProviderUnavailable as exc:

@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-11",
+  "timezone": "America/Chicago",
+  "scope": "read-only research; no platform requests, service changes, or queue mutation",
+  "user_other_web_logins": false,
+  "login_export_at_utc": "2026-10-11T06:28:07Z",
+  "signed_owner_verified_at_utc": "2026-10-11T06:28:53.688326Z",
+  "signed_owner_verified": true,
+  "original_account_matches": true,
+  "downloads_since_login": {
+    "status": "done",
+    "count": 119,
+    "first_completed_at": "2026-10-11T01:30:09.252331-05:00",
+    "last_completed_at": "2026-10-11T02:06:01.726892-05:00",
+    "meaning": "download stage completions, not published knowledge count"
+  },
+  "download_pause_event": {
+    "at_utc": "2026-10-11T07:06:11.942278Z",
+    "error_code": "XHS_LOGIN_OR_VERIFICATION_REQUIRED",
+    "platform_code": null,
+    "retry": false
+  },
+  "later_favorites_scan": {
+    "at_utc": "2026-10-11T12:01:07.134561Z",
+    "state": "complete",
+    "pages": 22,
+    "submitted": 0,
+    "duplicates": 214,
+    "error_code": null
+  },
+  "later_following_scan": {
+    "at_utc": "2026-10-11T12:17:09.523888Z",
+    "state": "backpressure",
+    "following_count": 40,
+    "error_code": null
+  },
+  "database_gate_snapshot": {
+    "at": "2026-10-11T11:47:29.112931-05:00",
+    "xhs_login_required": true,
+    "xhs_failures": 0,
+    "xhs_circuit_until": null
+  },
+  "session_services": {
+    "xhs-session-check.timer": "not-found",
+    "xhs-session-manager.service": "not-found",
+    "rag-favorite-favorites.timer": "active",
+    "rag-favorite-following.timer": "active",
+    "rag-favorite-following-continue.timer": "active"
+  },
+  "runtime_capabilities": {
+    "chrome_version": "154.0.8037.97",
+    "playwright_version": "1.63.0",
+    "xhshow_version": "0.2.0",
+    "display_available": true,
+    "xauth_installed": true,
+    "xvfb_installed": false,
+    "private_serve_route_to_8765_present": true,
+    "funnel_enabled": false,
+    "worker_proxy_variables_present": false,
+    "mobile_xhs_login_page_implemented": false
+  },
+  "limits": [
+    "No definitive cause established for both user-reported QR login attempts",
+    "The latest download error lacks a specific platform code",
+    "An API success does not prove all browser/download paths are currently usable",
+    "Persistent browser ownership and lower request volume have not yet been implemented or measured here"
+  ]
+}

@@ -178,6 +178,54 @@ def live_library(tmp_path):
             c.execute("DELETE FROM public." + table + " WHERE library_id=%s", (lid,))
 
 
+def test_live_accepted_legacy_task_counts_only_when_all_originals_are_indexed(
+    live_library,
+):
+    from uuid import uuid4
+
+    from psycopg.types.json import Jsonb
+
+    from rag_favorite import unified_library as u
+    from rag_favorite.database import connect_database
+    from rag_favorite.indexes import resolve_index
+    from rag_favorite.queue_monitor import _searchable_completed, describe_stage
+    from rag_favorite.video_store import library_id
+
+    config, video = live_library
+    dimension = resolve_index(config).embedding.dimensions
+    identifiers = [str(uuid4()) for _ in range(2)]
+
+    class Encoder:
+        def embed_documents(self, texts):
+            return [[1.0] + [0.0] * (dimension - 1) for _ in texts]
+
+    u.create_generation(config, video, "accepted")
+    for ident in identifiers:
+        draft = "# Existing knowledge\n\nRetained original evidence.\n"
+        u.register_document(config, video, ident, draft, "Existing", "legacy", {})
+        u.queue_summary(config, video, "accepted", ident)
+        u.publish_summary(config, video, "accepted", ident, draft, encoder=Encoder())
+    u.activate_generation(config, video, "accepted", identifiers)
+    with connect_database(config) as db:
+        for references in [identifiers, [], [str(uuid4())]]:
+            db.execute(
+                "INSERT INTO public.rag_video_jobs(id,library_id,collection,state,stage,payload) "
+                "VALUES(%s,%s,'general','complete','legacy_knowledge_imported',%s)",
+                (
+                    str(uuid4()),
+                    library_id(video),
+                    Jsonb({"accepted_knowledge": {"document_ids": references}}),
+                ),
+            )
+        assert _searchable_completed(db, config, video) == 1
+        db.execute(
+            "DELETE FROM public.rag_document_summary_chunks WHERE document_id=%s",
+            (identifiers[1],),
+        )
+        assert _searchable_completed(db, config, video) == 0
+    assert describe_stage("legacy_knowledge_imported")[0] == "已有知识直接入库"
+
+
 def test_live_resume_repairs_task_and_summary_file_without_reembedding(live_library):
     from uuid import uuid4
 

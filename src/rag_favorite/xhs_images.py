@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import hashlib
+import http.client
 import json
 import os
+import time
+import urllib.error
 import urllib.request
 from urllib.parse import urlsplit
 
 from .config import ConfigError
+from .observation import timed
 from .pipeline_fence import OwnershipLost, PipelinePaused, before_operation
 from .video_provider import CCRProvider, ProviderUnavailable
 from .video_store import digest_file
@@ -24,6 +28,7 @@ from .xhs_private import (
 _ocr_engine = None
 
 
+@timed("image_ocr")
 def local_ocr(path):
     global _ocr_engine
     try:
@@ -44,8 +49,15 @@ def local_ocr(path):
         raise ProviderUnavailable("XHS_OCR_FAILED", code="XHS_OCR_FAILED") from None
 
 
-def download_image(url, destination, *, limit=20_000_000):
+@timed("download_image")
+def download_image(url, destination, *, limit=20_000_000, proxy=None, on_request=None):
     from PIL import Image, ImageOps
+
+    from .xhs_proxy import RequiredProxy
+    from .xhs_session_policy import classify, retry_after_seconds
+
+    if proxy is None:
+        raise ConfigError("XHS images must use the session service.")
 
     url = trusted_media(url)
     if not url:
@@ -58,7 +70,8 @@ def download_image(url, destination, *, limit=20_000_000):
         raise ConfigError("Unsafe image path.")
     temporary.unlink(missing_ok=True)
     opener = urllib.request.build_opener(
-        TrustedRedirect(lambda host: host.endswith(".xhscdn.com"))
+        RequiredProxy(proxy, on_request),
+        TrustedRedirect(lambda host: host.endswith(".xhscdn.com")),
     )
     request = urllib.request.Request(
         url,
@@ -73,13 +86,24 @@ def download_image(url, destination, *, limit=20_000_000):
             if not (urlsplit(response.url).hostname or "").endswith(".xhscdn.com"):
                 raise ConfigError("Untrusted image redirect.")
             size = 0
+            length = response.headers.get("Content-Length")
+            expected = int(length) if length is not None else None
+            if expected is not None and not 0 < expected <= limit:
+                raise ConfigError("Invalid image Content-Length.")
+            deadline = time.monotonic() + 180
             for block in iter(lambda: response.read(65536), b""):
+                if time.monotonic() > deadline:
+                    raise TimeoutError("XHS image deadline")
                 size += len(block)
                 if size > limit:
                     raise ConfigError("Image exceeds the configured size limit.")
                 file.write(block)
             if not size:
                 raise ConfigError("Empty image response.")
+            if expected is not None and size != expected:
+                raise ProviderUnavailable("SOURCE_DOWNLOAD_INCOMPLETE", retryable=True)
+            file.flush()
+            os.fsync(file.fileno())
         with Image.open(temporary) as image:
             # Evidence is full resolution; the provider gets a bounded separate copy.
             if image.width * image.height > 40_000_000:
@@ -88,10 +112,26 @@ def download_image(url, destination, *, limit=20_000_000):
             image.convert("RGB").save(destination, "JPEG", quality=95)
         destination.chmod(0o600)
         return {"sha256": digest_file(destination), "bytes": destination.stat().st_size}
+    except urllib.error.HTTPError as exc:
+        error = classify(status=exc.code)
+        delay = retry_after_seconds(exc.headers.get("Retry-After"))
+        if delay:
+            error.diagnostics["retry_after"] = delay
+        raise error from None
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        ConnectionError,
+        http.client.HTTPException,
+    ):
+        from .xhs_session_policy import failure
+
+        raise failure("XHS_NETWORK_ERROR") from None
     finally:
         temporary.unlink(missing_ok=True)
 
 
+@timed("image_vision_prepare")
 def vision_image(path):
     from PIL import Image
 
@@ -109,7 +149,15 @@ def process_image_note(
     video, note, job_id, source_url, *, ocr=None, provider=None, downloader=None
 ):
     """Return durable Markdown and completeness; persist each successful image first."""
-    ocr, downloader = ocr or local_ocr, downloader or download_image
+    if downloader is None:
+        from .xhs_session_rpc import SessionRPC
+
+        SessionRPC(video).call("download_media", note=note, job_id=job_id, wait=True)
+
+        def downloader(*_args, **_kwargs):
+            raise ConfigError("XHS image checkpoint changed after download.")
+
+    ocr = ocr or local_ocr
     derived = video.root / "derived" / job_id
     evidence_root = derived / "images"
     private_directory(derived)
@@ -185,7 +233,11 @@ def process_image_note(
             cached.pop("error_code", None)
         except (OwnershipLost, PipelinePaused):
             raise
-        except Exception as exc:  # noqa: BLE001 - retain partial image evidence
+        except Exception as exc:
+            from .xhs_session_policy import WAIT_CODES
+
+            if getattr(exc, "code", None) in WAIT_CODES:
+                raise
             code = getattr(exc, "code", None) or "XHS_IMAGE_PROCESSING_FAILED"
             if isinstance(exc, ProviderUnavailable) and exc.retryable:
                 transient = exc
@@ -234,6 +286,8 @@ def enqueue_live_photos(config, video, note, job, *, downloader=None):
     from .video_sources import download_note_video
     from .video_store import enqueue, library_id, record_source
 
+    bundle = None
+    managed = downloader is None
     downloader = downloader or download_note_video
     jobs, gaps = [], []
     for image in note.get("images", []):
@@ -255,7 +309,17 @@ def enqueue_live_photos(config, video, note, job, *, downloader=None):
         if previous:
             child_id = str(previous[0])
         else:
-            manifest = downloader(video, {"note_id": note["note_id"], "media_url": url})
+            if managed and bundle is None:
+                from .xhs_session_rpc import SessionRPC
+
+                bundle = SessionRPC(video).call(
+                    "download_media", note=note, job_id=str(job["id"]), wait=True
+                )
+            manifest = (
+                bundle["live"][str(index)]
+                if bundle is not None
+                else downloader(video, {"note_id": note["note_id"], "media_url": url})
+            )
             child = enqueue(
                 config,
                 video,

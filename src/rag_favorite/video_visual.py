@@ -12,6 +12,7 @@ import math
 from dataclasses import replace
 
 from .model_activity import cache_hit
+from .observation import timed
 from .video_provider import ProviderUnavailable, provider_call_kind
 
 DENSE_INSTRUCTION = """
@@ -88,6 +89,7 @@ def dense_provider_config(video, policy, segments):
     )
 
 
+@timed("validate_frame_summaries")
 def validate_frame_summaries(raw, times):
     values = raw.get("frame_summaries")
     if not isinstance(values, list) or len(values) != len(times):
@@ -153,6 +155,7 @@ def request_frame_batch(provider, instruction, transcript, images, times):
     ]
 
 
+@timed("analyse_frame_batches")
 def analyse_frame_batches(
     video,
     provider,
@@ -317,6 +320,7 @@ def embed_complete_text(encoder, text, chunk_size=3000):
     return [x / norm for x in pooled]
 
 
+@timed("decode_scheduled_frames")
 def decode_frames(video, source, work, segment, times, *, ffmpeg):
     frame_root = work / f"frames-{segment['ordinal']}"
     frame_root.mkdir(parents=True, exist_ok=True, mode=0o700)

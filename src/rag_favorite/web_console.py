@@ -26,7 +26,7 @@ from typing import Literal
 from urllib.parse import urlsplit
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -237,6 +237,9 @@ def public_snapshot(value: dict) -> dict:
     result["pipeline"] = {
         "available": pipeline.get("available", False),
         "circuit_until": pipeline.get("circuit_until"),
+        "xhs_login_required": pipeline.get("xhs_login_required", False),
+        "xhs_circuit_until": pipeline.get("xhs_circuit_until"),
+        "xhs_download_blocked": pipeline.get("xhs_download_blocked", False),
         "stages": {
             stage: {
                 key: row.get(key, 0)
@@ -264,11 +267,16 @@ def public_snapshot(value: dict) -> dict:
     return result
 
 
-def create_app(monitor, settings: dict) -> FastAPI:
+def create_app(monitor, settings: dict, *, job_queries=None) -> FastAPI:
+    if job_queries is None and hasattr(monitor, "config") and hasattr(monitor, "video"):
+        from .web_jobs import WebJobQueries
+
+        job_queries = WebJobQueries(monitor.config, monitor.video)
     sessions = {}
     attempts = {}
     global_attempts = deque()
     snapshot = None
+    task_summary = None
     last_good = 0.0
     read_error = False
     backend_lock = threading.Lock()
@@ -276,12 +284,39 @@ def create_app(monitor, settings: dict) -> FastAPI:
 
     def read_backend():
         with backend_lock:
-            return public_snapshot(monitor.snapshot())
+            value = public_snapshot(monitor.snapshot())
+        summary = job_queries.summary() if job_queries is not None else None
+        if summary is not None:
+            summary = {
+                "counts": {
+                    key: int(number)
+                    for key, number in summary["counts"].items()
+                    if key
+                    in {
+                        "queued",
+                        "running",
+                        "paused",
+                        "failed",
+                        "blocked",
+                        "published",
+                        "complete",
+                        "duplicate",
+                    }
+                },
+                "reasons": [
+                    {key: row[key] for key in ("code", "label", "count")}
+                    for row in summary["reasons"]
+                ],
+                "collections": summary["collections"],
+                "total": summary["total"],
+                "captured_at": summary["captured_at"],
+            }
+        return value, summary
 
     async def refresh():
-        nonlocal snapshot, last_good, read_error
+        nonlocal snapshot, task_summary, last_good, read_error
         try:
-            snapshot = await asyncio.to_thread(read_backend)
+            snapshot, task_summary = await asyncio.to_thread(read_backend)
             last_good, read_error = time.monotonic(), False
         except Exception:  # noqa: BLE001 - never expose provider credentials
             # Database/provider exception strings may include credentials or URLs.
@@ -378,7 +413,7 @@ def create_app(monitor, settings: dict) -> FastAPI:
                 "Referrer-Policy": "no-referrer",
                 "X-Frame-Options": "DENY",
                 "Strict-Transport-Security": "max-age=31536000",
-                "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+                "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
             }
         )
         return response
@@ -388,7 +423,7 @@ def create_app(monitor, settings: dict) -> FastAPI:
         return FileResponse(ASSETS / "index.html")
 
     @app.get("/assets/{filename}")
-    async def asset(filename: Literal["console.js", "console.css"]):
+    async def asset(filename: Literal["console.js", "console.css", "xhs-panel.js"]):
         return FileResponse(ASSETS / filename)
 
     @app.post("/api/login")
@@ -451,19 +486,115 @@ def create_app(monitor, settings: dict) -> FastAPI:
         return response
 
     @app.get("/api/snapshot")
-    async def get_snapshot(request: Request):
+    async def get_snapshot(request: Request, include_jobs: bool = True):
         session(request)
         age = time.monotonic() - last_good if last_good else None
         stale = read_error or age is None or age > 15
+        projection = snapshot
+        if snapshot is not None and not include_jobs:
+            projection = {
+                key: value
+                for key, value in snapshot.items()
+                if key not in {"jobs", "truncated"}
+            }
+            projection["pipeline"] = {
+                key: value
+                for key, value in snapshot["pipeline"].items()
+                if key not in {"jobs", "running"}
+            }
+            projection["task_summary"] = task_summary
         return JSONResponse(
             {
-                "snapshot": snapshot,
+                "snapshot": projection,
                 "stale": stale,
                 "age_seconds": round(age, 1) if age is not None else None,
                 "error": "数据暂不可用或已过时，正在自动重连。" if stale else None,
             },
             status_code=503 if stale else 200,
         )
+
+    def safe_job(row):
+        return {
+            key: row.get(key) for key in (*JOB_FIELDS, "display_state", "reason_code")
+        }
+
+    async def query_jobs(method, *args, **kwargs):
+        if job_queries is None:
+            raise HTTPException(503, "任务查询暂不可用，请稍后重试。")
+        try:
+            return await asyncio.to_thread(
+                getattr(job_queries, method), *args, **kwargs
+            )
+        except Exception:  # noqa: BLE001 - database errors may contain credentials
+            raise HTTPException(503, "任务查询暂不可用，请稍后重试。") from None
+
+    @app.get("/api/jobs")
+    async def jobs(
+        request: Request,
+        q: str = Query("", max_length=200),
+        state: Literal[
+            "",
+            "queued",
+            "running",
+            "paused",
+            "failed",
+            "blocked",
+            "published",
+            "complete",
+            "duplicate",
+            "attention",
+        ] = "",
+        reason: str = Query("", max_length=200),
+        collection: str = Query("", max_length=200),
+        page: int = Query(1, ge=1),
+        page_size: int = Query(40, ge=1, le=100),
+    ):
+        session(request)
+        result = await query_jobs(
+            "list_jobs",
+            q=q.strip(),
+            state=state,
+            reason=reason,
+            collection=collection,
+            page=page,
+            page_size=page_size,
+        )
+        return {
+            "items": [safe_job(row) for row in result["items"]],
+            **{
+                key: result[key]
+                for key in ("total", "page", "page_size", "captured_at")
+            },
+        }
+
+    # This fixed route must precede the UUID route.
+    @app.get("/api/jobs/updates")
+    async def job_updates(request: Request, ids: str = Query("", max_length=3700)):
+        session(request)
+        try:
+            values = list(
+                dict.fromkeys(str(UUID(value)) for value in ids.split(",") if value)
+            )
+            if len(values) > 100:
+                raise ValueError
+        except ValueError:
+            raise HTTPException(
+                422, "任务 ID 列表无效，每次最多查询 100 项。"
+            ) from None
+        result = await query_jobs("updates", values)
+        return {
+            "items": [safe_job(row) for row in result["items"]],
+            "missing_ids": result["missing_ids"],
+            "captured_at": result["captured_at"],
+        }
+
+    @app.get("/api/jobs/{job_id}")
+    async def job_detail(job_id: UUID, request: Request):
+        session(request)
+        result = await query_jobs("get_job", str(job_id))
+        if result is None:
+            raise HTTPException(404, "任务不存在或已不在当前知识库中。")
+        return {"item": safe_job(result)}
 
     @app.post("/api/action")
     async def action(data: Action, request: Request):
@@ -493,6 +624,9 @@ def create_app(monitor, settings: dict) -> FastAPI:
             await refresh()
             return {"message": message}
 
+    from .xhs_web import install_routes
+
+    install_routes(app, monitor, session, csrf)
     return app
 
 
@@ -526,8 +660,8 @@ def main(argv=None):
         return
     import uvicorn
 
-    from .desktop_gui import profiles
     from .queue_monitor import QueueMonitor
+    from .runtime_profiles import profiles
 
     config, video = profiles(args.config, args.video_config)
     app = create_app(QueueMonitor(config, video), settings)

@@ -54,6 +54,8 @@ class MetadataExtractor:
         author_id: str | None = None,
         author_scan_limit: int | None = None,
     ) -> tuple[SourceMetadata, dict[str, Any]]:
+        from backend.ingestion.xhs_transport import require_managed_xhs
+
         validate_public_url(url)
         if author_id and (urlsplit(url).hostname or "").lower() in {
             "xiaohongshu.com",
@@ -93,6 +95,7 @@ class MetadataExtractor:
                 # job metadata or persistent logs.
                 "_transient_media_url": resolved["media_url"],
             }
+        require_managed_xhs(url)
         opts: dict[str, Any] = {
             "quiet": True,
             "no_warnings": True,
@@ -216,6 +219,8 @@ async def download_xiaohongshu_cover(
     job_dir: Path,
 ) -> Path | None:
     """Download and normalize a transient Xiaohongshu cover to local JPEG."""
+    from backend.ingestion.xhs_transport import require_managed_xhs
+    require_managed_xhs(url or "")
     if not url:
         return None
     parsed = urlsplit(url)

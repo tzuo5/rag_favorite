@@ -4,6 +4,8 @@ import time
 from contextlib import contextmanager
 from contextvars import ContextVar
 
+from .observation import span
+
 _owner = ContextVar("pipeline_owner", default=None)
 _resources = ContextVar("pipeline_resources", default=frozenset())
 
@@ -61,14 +63,15 @@ def embedding_slot(video):
 
     with connect_database(load_config(), register_pgvector=False) as guard:
         guard.autocommit = True
-        while not guard.execute(
-            "SELECT pg_try_advisory_lock(hashtext(%s))",
-            ("rag-embedding:" + library_id(video),),
-        ).fetchone()[0]:
-            before_operation()
-            if read_control(video).paused:
-                raise PipelinePaused()
-            time.sleep(0.2)
+        with span("wait", "Embedding.slot"):
+            while not guard.execute(
+                "SELECT pg_try_advisory_lock(hashtext(%s))",
+                ("rag-embedding:" + library_id(video),),
+            ).fetchone()[0]:
+                before_operation()
+                if read_control(video).paused:
+                    raise PipelinePaused()
+                time.sleep(0.2)
         before_operation()
         if read_control(video).paused:
             raise PipelinePaused()
@@ -81,7 +84,7 @@ def embedding_slot(video):
 
 @contextmanager
 def llm_slot(video):
-    """Share one CCR slot with inline extraction and historical summary backfill."""
+    """Bound CCR requests across extraction and backfill for this library."""
     if not video.pipeline_enabled:
         yield
         return
@@ -92,15 +95,27 @@ def llm_slot(video):
 
     with connect_database(load_config(), register_pgvector=False) as guard:
         guard.autocommit = True
-        while not guard.execute(
-            "SELECT pg_try_advisory_lock(hashtext(%s))",
-            ("rag-ccr:" + library_id(video),),
-        ).fetchone()[0]:
-            before_operation()
-            if read_control(video).paused:
-                raise PipelinePaused()
-            time.sleep(0.2)
+        base = "rag-ccr:" + library_id(video)
+        acquired = None
+        with span("wait", "CCR.slot"):
+            while acquired is None:
+                before_operation()
+                if read_control(video).paused:
+                    raise PipelinePaused()
+                for slot in range(video.ccr_concurrency):
+                    # Slot zero retains the original lock identity for old callers.
+                    key = base if slot == 0 else f"{base}:{slot}"
+                    if guard.execute(
+                        "SELECT pg_try_advisory_lock(hashtext(%s))", (key,)
+                    ).fetchone()[0]:
+                        acquired = key
+                        break
+                if acquired is None:
+                    time.sleep(0.2)
         before_operation()
         if read_control(video).paused:
             raise PipelinePaused()
-        yield
+        try:
+            yield
+        finally:
+            guard.execute("SELECT pg_advisory_unlock(hashtext(%s))", (acquired,))

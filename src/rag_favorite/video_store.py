@@ -475,6 +475,11 @@ def update_job(
             "UPDATE public.rag_video_jobs SET state=%s,stage=%s,error_code=%s,updated_at=now() WHERE id=%s AND library_id=%s",
             (state, stage, error_code, job_id, library_id(video)),
         )
+    from .observation import emit
+
+    emit(
+        video, job_id, "job_transition", state=state, stage=stage, error_code=error_code
+    )
 
 
 def publish(

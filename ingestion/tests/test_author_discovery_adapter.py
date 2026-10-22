@@ -764,69 +764,20 @@ def test_xiaohongshu_accepts_fifty_and_rejects_above_configured_limit() -> None:
         ))
 
 
-def test_xiaohongshu_default_page_fetcher_signs_json_cookie_request(
-    tmp_path,
-) -> None:
-    cookie_path = tmp_path / "xhs-cookies.json"
-    cookie_path.write_text(json.dumps({
-        "a1": "a" * 52,
-        "webId": "b" * 32,
-        "web_session": "session-must-not-leak",
-    }))
-    cookie_path.chmod(0o600)
-    adapter = XiaohongshuAuthorDiscoveryAdapter(Settings(
-        xiaohongshu_cookies_file=str(cookie_path),
-    ))
-    captured = {}
+def test_xiaohongshu_legacy_network_requires_managed_session(tmp_path) -> None:
+    adapter = XiaohongshuAuthorDiscoveryAdapter(Settings())
 
-    class Headers:
-        @staticmethod
-        def get_content_charset():
-            return "utf-8"
+    class ForbiddenOpener:
+        def open(self, *_args, **_kwargs):
+            pytest.fail("Legacy XHS must never make an independent request")
 
-    class Response:
-        headers = Headers()
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_):
-            return None
-
-        @staticmethod
-        def read(_size):
-            return json.dumps({
-                "success": True,
-                "data": {
-                    "notes": [],
-                    "cursor": "done",
-                    "has_more": False,
-                },
-            }).encode()
-
-    class Opener:
-        @staticmethod
-        def open(request, timeout):
-            captured["url"] = request.full_url
-            captured["headers"] = dict(request.header_items())
-            captured["timeout"] = timeout
-            return Response()
-
-    adapter._opener = Opener()
-    result = adapter._download_user_posted_page(
-        "5c31698d0000000007018a31", "cursor-1", 20
-    )
-
-    assert result["has_more"] is False
-    assert "num=20" in captured["url"]
-    assert "cursor=cursor-1" in captured["url"]
-    assert "user_id=5c31698d0000000007018a31" in captured["url"]
-    assert captured["timeout"] == 30
-    lower_headers = {
-        key.lower(): value for key, value in captured["headers"].items()
-    }
-    assert {"x-s", "x-s-common", "x-t"} <= set(lower_headers)
-    assert "session-must-not-leak" not in repr(captured)
+    adapter._opener = ForbiddenOpener()
+    with pytest.raises(DiscoveryAdapterError) as caught:
+        adapter._download_profile_html("https://www.xiaohongshu.com/user/profile/" + "a" * 24)
+    assert caught.value.code == "XHS_SESSION_SERVICE_REQUIRED"
+    with pytest.raises(DiscoveryAdapterError) as caught:
+        adapter._request_api_json(None)
+    assert caught.value.code == "XHS_SESSION_SERVICE_REQUIRED"
 
 
 def test_xiaohongshu_cookie_readiness_is_secret_free(tmp_path) -> None:

@@ -1,0 +1,262 @@
+{
+  "scope": "Direct CCR gateway, synthetic text/images, background RAG left running.",
+  "requested_model": "Codex API/gpt-6.1-sol",
+  "returned_models": {
+    "gpt-6-luna": 556
+  },
+  "returned_reasoning": {
+    "medium": 556
+  },
+  "client_requests": 557,
+  "protocol_completed": 556,
+  "strict_correct": 552,
+  "content_correct": 556,
+  "http_statuses": {
+    "200": 557
+  },
+  "reported_cached_tokens": 0,
+  "usage_available_requests": 556,
+  "input_tokens": 238252,
+  "output_tokens": 32193,
+  "upstream_attempt_count": null,
+  "burst_groups": [
+    {
+      "source": "sweep",
+      "kind": "text",
+      "concurrency": 1,
+      "requests": 3,
+      "completed": 3,
+      "strict_correct": 3,
+      "content_correct": 3,
+      "batch_active_seconds": 3.540428469015751,
+      "strict_rpm": 50.841303976419695,
+      "median_seconds": 1.168096803012304,
+      "p95_seconds": 1.2308628597005735,
+      "max_seconds": 1.2378368659992702,
+      "interrupted": 0
+    },
+    {
+      "source": "sweep",
+      "kind": "text",
+      "concurrency": 2,
+      "requests": 6,
+      "completed": 6,
+      "strict_correct": 6,
+      "content_correct": 6,
+      "batch_active_seconds": 4.849577255023178,
+      "strict_rpm": 74.2332745863803,
+      "median_seconds": 1.1750047770037781,
+      "p95_seconds": 1.9947728147599264,
+      "max_seconds": 2.1547167070093565,
+      "interrupted": 0
+    },
+    {
+      "source": "sweep",
+      "kind": "text",
+      "concurrency": 4,
+      "requests": 12,
+      "completed": 12,
+      "strict_correct": 12,
+      "content_correct": 12,
+      "batch_active_seconds": 8.69616495500668,
+      "strict_rpm": 82.79511758634148,
+      "median_seconds": 1.7701044165005442,
+      "p95_seconds": 3.207528843206818,
+      "max_seconds": 4.065356405015336,
+      "interrupted": 0
+    },
+    {
+      "source": "sweep",
+      "kind": "text",
+      "concurrency": 8,
+      "requests": 24,
+      "completed": 23,
+      "strict_correct": 23,
+      "content_correct": 23,
+      "batch_active_seconds": 116.2863557030214,
+      "strict_rpm": 11.867256409034962,
+      "median_seconds": 1.292631081509171,
+      "p95_seconds": 3.148268446604195,
+      "max_seconds": 112.02089678597986,
+      "interrupted": 1
+    },
+    {
+      "source": "image",
+      "kind": "image",
+      "concurrency": 1,
+      "requests": 3,
+      "completed": 3,
+      "strict_correct": 3,
+      "content_correct": 3,
+      "batch_active_seconds": 3.5992685389937833,
+      "strict_rpm": 50.01016124524042,
+      "median_seconds": 1.0735478400019929,
+      "p95_seconds": 1.4626328726968496,
+      "max_seconds": 1.505864542996278,
+      "interrupted": 0
+    },
+    {
+      "source": "image",
+      "kind": "image",
+      "concurrency": 2,
+      "requests": 6,
+      "completed": 6,
+      "strict_correct": 6,
+      "content_correct": 6,
+      "batch_active_seconds": 5.714476812019711,
+      "strict_rpm": 62.99789321793791,
+      "median_seconds": 1.631865127987112,
+      "p95_seconds": 2.1193864360102452,
+      "max_seconds": 2.1958319600089453,
+      "interrupted": 0
+    },
+    {
+      "source": "image",
+      "kind": "image",
+      "concurrency": 4,
+      "requests": 12,
+      "completed": 12,
+      "strict_correct": 12,
+      "content_correct": 12,
+      "batch_active_seconds": 5.1290127980173565,
+      "strict_rpm": 140.3778910979359,
+      "median_seconds": 1.1884542385087116,
+      "p95_seconds": 2.159440065496892,
+      "max_seconds": 2.48627626200323,
+      "interrupted": 0
+    },
+    {
+      "source": "image",
+      "kind": "image",
+      "concurrency": 8,
+      "requests": 24,
+      "completed": 24,
+      "strict_correct": 23,
+      "content_correct": 24,
+      "batch_active_seconds": 7.4171359880128875,
+      "strict_rpm": 186.05564226276422,
+      "median_seconds": 1.3255845130042871,
+      "p95_seconds": 2.7374188196641613,
+      "max_seconds": 3.236103297007503,
+      "interrupted": 0
+    },
+    {
+      "source": "text-recheck",
+      "kind": "text",
+      "concurrency": 8,
+      "requests": 8,
+      "completed": 8,
+      "strict_correct": 8,
+      "content_correct": 8,
+      "batch_active_seconds": 2.7268502619990613,
+      "strict_rpm": 176.02726731614177,
+      "median_seconds": 1.3069388775038533,
+      "p95_seconds": 2.4723789524068702,
+      "max_seconds": 2.7258803530130535,
+      "interrupted": 0
+    },
+    {
+      "source": "eight-cards",
+      "kind": "eight_images",
+      "concurrency": 1,
+      "requests": 3,
+      "completed": 3,
+      "strict_correct": 3,
+      "content_correct": 3,
+      "batch_active_seconds": 10.274984904011944,
+      "strict_rpm": 17.518273912959003,
+      "median_seconds": 2.3092164370173123,
+      "p95_seconds": 5.848480478796409,
+      "max_seconds": 6.241732038994087,
+      "interrupted": 0
+    },
+    {
+      "source": "eight-cards",
+      "kind": "eight_images",
+      "concurrency": 4,
+      "requests": 12,
+      "completed": 12,
+      "strict_correct": 12,
+      "content_correct": 12,
+      "batch_active_seconds": 38.5010078419873,
+      "strict_rpm": 18.700809156865848,
+      "median_seconds": 3.237596893493901,
+      "p95_seconds": 15.239007171831313,
+      "max_seconds": 26.29377679497702,
+      "interrupted": 0
+    }
+  ],
+  "sustained4": {
+    "kind": "image",
+    "concurrency": 4,
+    "scheduled_seconds": 180.0,
+    "elapsed_seconds": 180.93133467799635,
+    "requests": 436,
+    "correct": 433,
+    "early_stop": false,
+    "effective_rpm": 143.59038497249043,
+    "latency_median": 1.2681568909902126,
+    "latency_p95": 2.6172463944822084,
+    "protocol_completed": 436,
+    "content_correct": 436,
+    "nonce_copy_errors": 3,
+    "max_seconds": 61.627505229000235,
+    "median_ttft": 0.9373126665159361
+  },
+  "resource_samples": {
+    "sweep": {
+      "peak_rss_bytes": 423936000,
+      "peak_cpu_cores": 0.21956389363387613,
+      "samples": 167,
+      "samples_with_background_rag_ccr": 167,
+      "peak_benchmark_in_flight": 8
+    },
+    "image": {
+      "peak_rss_bytes": 373989376,
+      "peak_cpu_cores": 0.1497757668038816,
+      "samples": 68,
+      "samples_with_background_rag_ccr": 68,
+      "peak_benchmark_in_flight": 8
+    },
+    "text-recheck": {
+      "peak_rss_bytes": 386670592,
+      "peak_cpu_cores": 0.08991157951534454,
+      "samples": 6,
+      "samples_with_background_rag_ccr": 6,
+      "peak_benchmark_in_flight": 8
+    },
+    "eight-cards": {
+      "peak_rss_bytes": 413016064,
+      "peak_cpu_cores": 0.199554635162173,
+      "samples": 67,
+      "samples_with_background_rag_ccr": 66,
+      "peak_benchmark_in_flight": 4
+    },
+    "sustain4": {
+      "peak_rss_bytes": 432414720,
+      "peak_cpu_cores": 0.2994981297861227,
+      "samples": 181,
+      "samples_with_background_rag_ccr": 180,
+      "peak_benchmark_in_flight": 4
+    }
+  },
+  "real_source_material_tested": false,
+  "production_state_changed": false,
+  "limitations": [
+    "Mixed background load; results are observed performance, not an isolated capacity ceiling.",
+    "Short per-level sample counts and varying equal-complexity cards; speed ratios are approximate.",
+    "One text request was deliberately interrupted at 112 seconds, not naturally timed out at 600 seconds.",
+    "Nonce transcription errors are separate from mathematical/image-content accuracy.",
+    "Eight synthetic cards do not validate real video extraction, OCR or end-to-end RAG throughput.",
+    "16 concurrency was not tested because the 8-concurrency sweep did not pass every acceptance check.",
+    "Routing retry headers do not account for all internal socket/OAuth attempts."
+  ],
+  "postflight": {
+    "gateway_running": true,
+    "gateway_pid_unchanged": true,
+    "routing_unchanged": true,
+    "queue_pause_unchanged": true,
+    "queue_paused": false,
+    "background_rag_active": true
+  }
+}

@@ -7,18 +7,19 @@ import http.cookiejar
 import json
 import os
 import re
-import shutil
 import subprocess
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit, urlunsplit
+from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
 from .config import ConfigError
+from .observation import timed
 from .video_provider import ProviderUnavailable
 from .video_store import digest_file
-from .xhs_note import parse_note
-from .xhs_private import TrustedRedirect, browser_session_lock
+from .xhs_private import TrustedRedirect
 
 
 def validate_source_url(url: str):
@@ -38,90 +39,63 @@ def validate_source_url(url: str):
         raise ConfigError("Only an HTTPS Xiaohongshu share or note URL is supported.")
 
 
+def source_http_error(status):
+    code = {
+        401: "XHS_LOGIN_REQUIRED",
+        403: "XHS_LOGIN_OR_VERIFICATION_REQUIRED",
+        461: "XHS_LOGIN_OR_VERIFICATION_REQUIRED",
+        471: "XHS_LOGIN_OR_VERIFICATION_REQUIRED",
+        404: "XHS_NOTE_UNAVAILABLE",
+    }.get(status, f"XHS_SOURCE_HTTP_{status}")
+    return ProviderUnavailable(
+        code, status_code=status, retryable=status == 429 or 500 <= status < 600
+    )
+
+
+def check_note_redirect(url):
+    """Classify platform landing pages without retaining signed URLs or messages."""
+    part = urlsplit(url)
+    platform_code = parse_qs(part.query).get("error_code", [""])[0]
+    if platform_code in {"300012", "300013", "-100", "-101"}:
+        raise ProviderUnavailable(
+            "XHS_LOGIN_OR_VERIFICATION_REQUIRED",
+            diagnostics={"platform_code": platform_code},
+        )
+    if part.path.rstrip("/") == "/login":
+        raise ProviderUnavailable("XHS_LOGIN_REQUIRED")
+    if part.path.rstrip("/") == "/404":
+        raise ProviderUnavailable(
+            "XHS_NOTE_UNAVAILABLE",
+            diagnostics={"platform_code": platform_code}
+            if re.fullmatch(r"[0-9-]{1,12}", platform_code)
+            else {},
+        )
+
+
+@timed("fetch_source_metadata")
 def fetch_note(video, source_url: str) -> dict:
     validate_source_url(source_url)
-    session = video.root.parent / "xhs-session"
-    cookie_file = session / "cookies.txt"
-    status = session / "status.json"
-    if (
-        not status.is_file()
-        or json.loads(status.read_text()).get("state") != "cookies_exported"
-    ):
-        raise ProviderUnavailable("XHS_LOGIN_REQUIRED")
-    if (
-        cookie_file.is_symlink()
-        or not cookie_file.is_file()
-        or cookie_file.stat().st_mode & 0o077
-    ):
-        raise ProviderUnavailable("XHS_LOGIN_REQUIRED")
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError as exc:
-        raise ProviderUnavailable("XHS_SOURCE_DEPENDENCIES_MISSING") from exc
-    cookies = http.cookiejar.MozillaCookieJar(str(cookie_file))
-    cookies.load(ignore_discard=True, ignore_expires=False)
-    opener = urllib.request.build_opener(
-        urllib.request.HTTPCookieProcessor(cookies),
-        TrustedRedirect(lambda host: host in {"xhslink.cn", "www.xiaohongshu.com"}),
-    )
-    try:
-        from .xhs_client import throttle_account
+    from .xhs_session_rpc import SessionRPC
 
-        throttle_account(video)
-        with opener.open(
-            urllib.request.Request(
-                source_url,
-                headers={
-                    "User-Agent": "Mozilla/5.0",
-                    "Referer": "https://www.xiaohongshu.com/",
-                },
-            ),
-            timeout=30,
-        ) as response:
-            final = response.url
-        part = urlsplit(final)
-        if part.hostname != "www.xiaohongshu.com":
-            raise ProviderUnavailable("XHS_SOURCE_UNAVAILABLE")
-        redirect = parse_qs(part.query).get("redirectPath", [final])[0]
-        part = urlsplit(redirect)
-        match = re.fullmatch(r"/(?:explore|discovery/item)/([a-f0-9]{24})", part.path)
-        if not match:
-            raise ProviderUnavailable("XHS_SOURCE_UNAVAILABLE")
-        note_id = match[1]
-        target = urlunsplit(
-            ("https", "www.xiaohongshu.com", "/explore/" + note_id, part.query, "")
-        )
-        chrome = shutil.which("google-chrome")
-        if not chrome:
-            raise ProviderUnavailable("XHS_SOURCE_BROWSER_MISSING")
-        with browser_session_lock(session), sync_playwright() as p:
-            context = p.chromium.launch_persistent_context(
-                str(session / "profile"),
-                executable_path=chrome,
-                headless=True,
-                locale="zh-CN",
-                args=["--disable-dev-shm-usage"],
-            )
-            try:
-                page = context.pages[0]
-                throttle_account(video)
-                page.goto(target, wait_until="domcontentloaded", timeout=60000)
-                page.wait_for_timeout(2500)
-                try:
-                    return parse_note(page.content(), note_id)
-                except ValueError as exc:
-                    raise ProviderUnavailable(
-                        "XHS_LOGIN_EXPIRED_OR_NOTE_UNAVAILABLE"
-                    ) from exc
-            finally:
-                context.close()
-    except ProviderUnavailable:
-        raise
-    except Exception as exc:
-        raise ProviderUnavailable("XHS_SOURCE_FETCH_FAILED") from exc
+    return SessionRPC(video).call("note", url=source_url)
 
 
-def download_note_video(video, note: dict) -> dict:
+@timed("download_video")
+def download_note_video(
+    video, note: dict, *, job_id=None, proxy=None, on_request=None
+) -> dict:
+    if proxy is None:
+        from .xhs_session_rpc import SessionRPC
+
+        return SessionRPC(video).call(
+            "download_media",
+            note=note,
+            job_id=job_id or "note-" + str(note.get("note_id", "")),
+            wait=True,
+        )["video"]
+    from .xhs_proxy import RequiredProxy
+    from .xhs_session_policy import classify
+
     url = note.get("media_url")
     if not url:
         raise ProviderUnavailable("XHS_NOTE_HAS_NO_VIDEO")
@@ -149,7 +123,8 @@ def download_note_video(video, note: dict) -> dict:
             },
         )
         opener = urllib.request.build_opener(
-            TrustedRedirect(lambda host: host.endswith(".xhscdn.com"))
+            RequiredProxy(proxy, on_request),
+            TrustedRedirect(lambda host: host.endswith(".xhscdn.com")),
         )
         with (
             opener.open(req, timeout=60) as response,
@@ -163,7 +138,10 @@ def download_note_video(video, note: dict) -> dict:
             if expected is not None and not 0 < expected <= video.max_asset_bytes:
                 raise ConfigError("Invalid or oversized media Content-Length.")
             size = 0
+            deadline = time.monotonic() + 600
             for block in iter(lambda: response.read(1_048_576), b""):
+                if time.monotonic() > deadline:
+                    raise TimeoutError("XHS media deadline")
                 size += len(block)
                 if size > video.max_asset_bytes:
                     raise ConfigError(
@@ -197,12 +175,32 @@ def download_note_video(video, note: dict) -> dict:
         metadata.write_text(json.dumps(manifest))
         metadata.chmod(0o600)
         return manifest
-    except (OSError, http.client.HTTPException) as exc:
+    except urllib.error.HTTPError as exc:
+        temporary.unlink(missing_ok=True)
+        target.unlink(missing_ok=True)
+        error = classify(status=exc.code)
+        from .xhs_session_policy import retry_after_seconds
+
+        delay = retry_after_seconds(exc.headers.get("Retry-After"))
+        if delay:
+            error.diagnostics["retry_after"] = delay
+        raise error from None
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        ConnectionError,
+        http.client.HTTPException,
+    ) as exc:
         temporary.unlink(missing_ok=True)
         target.unlink(missing_ok=True)
         raise ProviderUnavailable(
             "Source media transfer failed.",
-            code="SOURCE_DOWNLOAD_FAILED",
+            code="XHS_NETWORK_ERROR",
+            diagnostics={
+                "reason": type(exc).__name__
+                + ":"
+                + type(getattr(exc, "reason", exc)).__name__
+            },
             retryable=True,
             error_category="network",
         ) from exc
@@ -212,6 +210,7 @@ def download_note_video(video, note: dict) -> dict:
         raise
 
 
+@timed("validate_download")
 def validate_download(video, path):
     """Demux every packet before admitting media; never pad truncated source data."""
     result = subprocess.run(
@@ -300,6 +299,7 @@ def _external_cookie_args(video, key):
     return ["--cookies", str(cookie_path)]
 
 
+@timed("fetch_external_metadata")
 def fetch_external_title(video, source_url):
     """Read the source title before downloading media; keep signed URLs private."""
     import subprocess
@@ -339,6 +339,7 @@ def fetch_external_title(video, source_url):
     return title
 
 
+@timed("download_external_video")
 def download_external_video(video, source_url, job_id):
     """yt-dlp source adapter feeding the same staged-asset worker as local/XHS videos."""
     import subprocess

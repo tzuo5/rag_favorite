@@ -15,7 +15,7 @@ from backend.ingestion.discovery.registry import capability_payload
 from backend.ingestion.discovery_worker import AuthorDiscoveryWorker
 from backend.ingestion.models import BatchState, Destination, Platform
 from backend.ingestion.service import VideoIngestionService
-from backend.xhs_session.browser import BrowserSession, ProfileCorrupt
+from backend.xhs_session.browser import BrowserSession, BrowserUnavailable
 from backend.xhs_session.cli import SessionManager
 from backend.xhs_session.cookie_export import (
     CookieExportError,
@@ -203,26 +203,8 @@ def test_session_lock_prevents_concurrent_profile_use(tmp_path) -> None:
         first.release()
 
 
-def test_corrupt_chromium_local_state_is_detected_before_launch(
-    tmp_path, monkeypatch
-) -> None:
-    settings = session_settings(tmp_path)
-    settings.xiaohongshu_profile_dir.mkdir(parents=True)
-    (settings.xiaohongshu_profile_dir / "Local State").write_text("{")
-    monkeypatch.setenv("DISPLAY", ":99")
-    with pytest.raises(ProfileCorrupt):
-        BrowserSession(settings).open()
 
 
-def test_macos_browser_does_not_require_x11_display(tmp_path, monkeypatch) -> None:
-    settings = session_settings(tmp_path)
-    settings.xiaohongshu_profile_dir.mkdir(parents=True)
-    (settings.xiaohongshu_profile_dir / "Local State").write_text("{")
-    monkeypatch.delenv("DISPLAY", raising=False)
-    monkeypatch.setattr("backend.xhs_session.browser.sys.platform", "darwin")
-
-    with pytest.raises(ProfileCorrupt):
-        BrowserSession(settings).open()
 
 
 def test_session_refresh_trigger_is_feature_gated(tmp_path) -> None:
@@ -597,3 +579,10 @@ def test_stale_confirmation_probes_and_continues_when_session_recovers(
     assert (
         service.confirm("discovery", "user", Destination.GENERAL)["state"] == "QUEUED"
     )
+
+
+def test_legacy_browser_directs_login_to_managed_session(tmp_path):
+    settings = session_settings(tmp_path)
+    with pytest.raises(BrowserUnavailable, match="XHS_SESSION_SERVICE_REQUIRED"):
+        BrowserSession(settings).open()
+    assert not settings.xiaohongshu_profile_dir.exists()

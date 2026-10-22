@@ -53,7 +53,7 @@ class Store:
                         "duplicates": 0,
                     },
                 )
-        self.report.update(scan_id="test", state="running")
+        self.report.update(scan_id="test", state="running", mode="history")
         return "test", "history"
 
     def next_author(self, scan):
@@ -166,7 +166,7 @@ def test_backpressure_and_pause_submit_nothing(runtime):
     assert run(runtime, client)["state"] == "backpressure"
     assert not client.calls
     runtime[2].queue = 300
-    assert run(runtime, Client([]), continue_only=True)["state"] == "backpressure"
+    assert run(runtime, Client([]), continue_only=True)["continuation_skipped"]
     runtime[2].is_paused = True
     assert run(runtime, Client([]))["state"] == "paused"
     assert not runtime[4]
@@ -196,7 +196,7 @@ def test_completed_continuation_does_not_touch_platform(runtime):
 
 def test_head_refresh_preserves_historical_cursor(runtime):
     store = runtime[2]
-    store.report.update(state="partial", scan_id="test")
+    store.report.update(state="partial", scan_id="test", mode="history")
     store.checkpoints[A] = (
         "pending",
         {
@@ -240,3 +240,22 @@ def test_exact_following_count_is_required(count, users):
 def test_missing_schema_never_means_empty_success(data, count):
     with pytest.raises(ProviderUnavailable):
         normalize_following(data, count)
+
+
+def test_backpressure_does_not_even_check_owner(runtime):
+    store = runtime[2]
+    store.report.update(state="backpressure", scan_id="test", mode="history")
+    store.queue = 300
+    client = Client([])
+    client.owner = lambda: pytest.fail("Backpressure must be checked before any platform read")
+    assert run(runtime, client, continue_only=True)["state"] == "backpressure"
+
+
+def test_continuation_reuses_snapshot_and_defers_without_blocking_author(runtime):
+    store = runtime[2]
+    run(runtime, Client([page("d" * 24, True, "cursor")], authors=(A,)), max_pages=1)
+    client = Client([ProviderUnavailable("XHS_DEFERRED")], authors=(A,))
+    client.following = lambda *_: pytest.fail("Continuation must reuse its complete snapshot")
+    assert run(runtime, client, continue_only=True)["state"] == "partial"
+    assert store.checkpoints[A][0] == "pending"
+    assert store.checkpoints[A][1]["cursor"] == "cursor"

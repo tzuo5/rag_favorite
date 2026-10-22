@@ -1,0 +1,19 @@
+[Unit]
+Description=RAG dedicated Xiaohongshu browser session
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+# The installer substitutes absolute, quoted paths for this checkout.
+WorkingDirectory=@REPO@
+ExecStart=@PYTHON@ -m rag_favorite.xhs_session_service --config @CONFIG@ --video-config @VIDEO_CONFIG@
+Restart=on-failure
+RestartSec=15
+TimeoutStopSec=100
+UMask=0077
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,418 @@
+{
+  "updated_at": "2026-10-12T20:40:31.093531+00:00",
+  "status": "deployed; idle, synthetic and recovery acceptance passed; real ingestion not exercised",
+  "scope": "Database adapter templates, queue-only connections, independent video worker memory guard",
+  "unchanged": {
+    "ccr_concurrency": 10,
+    "video_profile_byte_identical": true,
+    "dependencies_byte_identical": true,
+    "sql_and_pipeline_semantics_unchanged": true,
+    "imagebind_pid": 5794,
+    "imagebind_memory_limits": "infinity"
+  },
+  "implementation": {
+    "adapter_identity": [
+      "host",
+      "port",
+      "database",
+      "user",
+      "search_path"
+    ],
+    "cached_credentials": false,
+    "cached_connections": false,
+    "oid_checks": [
+      "vector",
+      "bit",
+      "halfvec",
+      "sparsevec",
+      "their array OIDs"
+    ],
+    "first_registration_locked": true,
+    "connection_adapter_mutations_isolated": true,
+    "modified_files": [
+      "src/rag_favorite/database.py",
+      "src/rag_favorite/video_pipeline.py",
+      "src/rag_favorite/summary_worker.py",
+      "examples/install_video_services.py",
+      "tests/test_pipeline_limits.py",
+      "tests/test_stage_queue_integration.py"
+    ],
+    "added_files": [
+      "tests/test_database_adapters.py",
+      "tests/test_video_memory_guard.py",
+      "scripts/check_database_memory.py",
+      "scripts/observe_worker_memory.py",
+      "scripts/check_worker_oom.py",
+      "scripts/check_pipeline_synthetic_memory.py"
+    ]
+  },
+  "leak_regression": {
+    "legacy": {
+      "mode": "legacy",
+      "connections": 200,
+      "before": {
+        "rss_kib": 39084,
+        "adapter_classes": 1206
+      },
+      "after": {
+        "rss_kib": 43500,
+        "adapter_classes": 2806
+      },
+      "rss_growth_mib": 4.3125,
+      "seconds": 1.29,
+      "stable": false
+    },
+    "fixed": {
+      "mode": "fixed",
+      "connections": 10000,
+      "before": {
+        "rss_kib": 36968,
+        "adapter_classes": 414
+      },
+      "after": {
+        "rss_kib": 37120,
+        "adapter_classes": 414
+      },
+      "rss_growth_mib": 0.1484375,
+      "seconds": 65.421,
+      "stable": true
+    }
+  },
+  "tests": {
+    "passed": 159,
+    "failed": 0,
+    "warnings": [
+      "Existing Starlette httpx deprecation warning"
+    ],
+    "lint": "passed",
+    "format": "passed",
+    "git_diff_check": "passed",
+    "suite_results": {
+      "core_and_integration": 144,
+      "title_dedup": 15
+    }
+  },
+  "synthetic_load": {
+    "passed": true,
+    "jobs_completed": 60,
+    "stage_completions": 240,
+    "peak_concurrency": 10,
+    "external_model_calls": 0,
+    "real_media_uploaded": 0,
+    "seconds": 69.4435754369988,
+    "max_rss_mib": 363.9296875,
+    "max_cgroup_mib": 354.734375,
+    "last_events": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0,
+      "oom_group_kill": 0,
+      "sock_throttled": 0
+    },
+    "samples": 139,
+    "memory_limits": {
+      "memory.high": "6442450944",
+      "memory.max": "8589934592",
+      "memory.swap.max": "1073741824"
+    },
+    "scope": "real scheduler, leases, checkpoints, ten LLM slots and vector connections; synthetic phase bodies; no model/media inference"
+  },
+  "oom_recovery": {
+    "passed": true,
+    "starts": [
+      {
+        "at": 1791834380.0153756,
+        "pids": [
+          3636437,
+          3636442,
+          3636443
+        ],
+        "previous_processes_alive": [],
+        "recovery": null
+      },
+      {
+        "at": 1791834401.8086467,
+        "pids": [
+          3637775,
+          3637785,
+          3637786
+        ],
+        "previous_processes_alive": [],
+        "recovery": {
+          "lease_recovered": 1,
+          "checkpoint_reused": true,
+          "stale_owner_rejected": true,
+          "new_token": 3,
+          "previous_token": 1,
+          "publish_status": "queued"
+        }
+      },
+      {
+        "at": 1791834423.536653,
+        "pids": [
+          3639226,
+          3639257,
+          3639258
+        ],
+        "previous_processes_alive": [],
+        "recovery": null
+      }
+    ],
+    "final": {
+      "ActiveState": "failed",
+      "SubState": "failed",
+      "MainPID": "0",
+      "Result": "oom-kill",
+      "NRestarts": "3",
+      "ControlGroup": ""
+    },
+    "production_service_oom_triggered": false,
+    "unit": "rag-memory-oom-test-2157767232.service",
+    "restart_delays_seconds": [
+      21.7932710647583,
+      21.72800636291504
+    ],
+    "test_lease_seconds": 3,
+    "unchanged_production_lease_seconds": 120,
+    "test_limits": {
+      "MemoryHigh": "127M",
+      "MemoryMax": "128M",
+      "MemorySwapMax": "16M"
+    }
+  },
+  "oom_harness_notes": [
+    "Initial probe verified MemoryHigh throttling; increased test-only MemoryHigh from 96M to 127M to finish the bounded OOM drill promptly.",
+    "systemd 259 retains Result=oom-kill when refusing the fourth start; acceptance verifies the explicit rate-limit journal message, three actual starts, checkpoint recovery and all child PIDs gone.",
+    "GNOME displayed a generic Application Stopped notification for the deliberately OOM-killed test services; kernel logs confirmed CONSTRAINT_MEMCG in test cgroups only."
+  ],
+  "deployment": {
+    "worker_marker": {
+      "pid": 3599710,
+      "queue_control_version": 1,
+      "title_dedup_version": 1,
+      "pipeline_version": 1,
+      "ccr_concurrency": 10,
+      "llm_consumers": 10
+    },
+    "systemd": {
+      "StartLimitIntervalUSec": "10min",
+      "StartLimitBurst": "3",
+      "Restart": "on-failure",
+      "RestartUSec": "20s",
+      "OOMPolicy": "kill",
+      "ControlGroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/rag-favorite-video-worker.service",
+      "MemoryHigh": "6442450944",
+      "MemoryMax": "8589934592",
+      "MemorySwapMax": "1073741824"
+    },
+    "cgroup": {
+      "memory.high": "6442450944",
+      "memory.max": "8589934592",
+      "memory.swap.max": "1073741824",
+      "memory.oom.group": "1"
+    },
+    "queue_paused": false,
+    "source_gate": [
+      true,
+      false
+    ],
+    "video_config_sha256": "d90406e8a55b10306872b6c038a0d38958955508ae8a5df74c68a07c0a9e297c"
+  },
+  "retrieval": {
+    "published_documents_found": 2,
+    "versioned_reads_complete": 2,
+    "pages_per_document": [
+      1,
+      2
+    ],
+    "private_evidence": ".runtime/memory-fix-20261012/retrieval.json"
+  },
+  "idle_observation": {
+    "elapsed_seconds": 3600.015396128001,
+    "samples": 181,
+    "warmup_seconds": 600,
+    "idle": true,
+    "stable_pid": true,
+    "pss_growth_mib_after_warmup": 2.8203125,
+    "pss_slope_mib_per_minute": 0.04074091611125073,
+    "max_pss_mib": 32.9453125,
+    "memory_events_delta": {
+      "high": 0,
+      "oom": 0,
+      "oom_kill": 0
+    },
+    "all_samples_concurrency_10": true,
+    "accepted": true,
+    "real_tasks_completed_during_observation": 0,
+    "status": "passed",
+    "started_at": "2026-10-12T19:39:39.971409+00:00",
+    "finished_at": "2026-10-12T20:39:39.971941+00:00",
+    "min_pss_mib_after_warmup": 29.318359375,
+    "max_pss_mib_after_warmup": 32.9453125,
+    "samples_file": ".runtime/memory-fix-20261012/observation/samples.jsonl"
+  },
+  "real_task_validation": {
+    "status": "not exercised",
+    "reason": "Original Xiaohongshu download block remains enabled; no real media uploaded for acceptance. Restored production queue is unpaused; no active stages observed.",
+    "completions_during_observation": 0,
+    "existing_published_document_reads": "passed; two documents read through complete=true"
+  },
+  "snapshots": {
+    "private_directory": ".runtime/memory-fix-20261012",
+    "preexisting_worktree_preserved": true,
+    "own_patch": ".runtime/memory-fix-20261012/implementation-only.patch",
+    "implementation_sha256": ".runtime/memory-fix-20261012/implementation-sha256.json"
+  },
+  "cleanup": {
+    "disposable_database_removed": true,
+    "temporary_test_credential_removed": true,
+    "oom_test_services_stopped": true,
+    "all_memory_test_services_finished": true
+  },
+  "rollback": {
+    "warning": "Never restart the original leaking version without a memory limit.",
+    "steps": [
+      "Pause admission and drain active stages/model calls for at most 15 minutes; restore the original pause state if drain times out.",
+      "Stop affected active services. If code rollback is needed, reverse only implementation-only.patch (after verifying it still applies), preserving pre-existing working-tree edits and all database/checkpoint data.",
+      "Keep the video worker stopped and disabled while restoring its previous configuration; do not automatically start the leaking version. Retain the protective drop-in until a safe replacement is ready if continued service is required.",
+      "Restore the original queue pause state and source gates; restart only safe, originally active services."
+    ]
+  },
+  "references": [
+    "https://www.psycopg.org/psycopg3/docs/advanced/adapt.html",
+    "https://github.com/systemd/systemd/blob/v259/man/systemd.resource-control.xml"
+  ],
+  "supplemental_queue_poll_stress": {
+    "seconds": 120.02243268900202,
+    "connections": 21412,
+    "adapter_classes": 391,
+    "warm_rss_growth_mib": 1.3125,
+    "warm_traced_live_bytes": 1328716,
+    "final_traced_live_bytes": 1310525,
+    "passed": true,
+    "scope": "13 actual stage consumer threads plus coordinator, empty claimable frontier with 300 synthetic gated jobs; 10 ms poll waits; no real media/models"
+  },
+  "final_runtime": {
+    "at": "2026-10-12T20:39:58.353364+00:00",
+    "services": {
+      "rag-favorite-video-worker.service": {
+        "ActiveState": "active",
+        "SubState": "running",
+        "StartLimitIntervalUSec": "10min",
+        "StartLimitBurst": "3",
+        "Restart": "on-failure",
+        "RestartUSec": "20s",
+        "MainPID": "3599710",
+        "NRestarts": "0",
+        "OOMPolicy": "kill",
+        "ControlGroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/rag-favorite-video-worker.service",
+        "MemoryCurrent": "37191680",
+        "MemoryHigh": "6442450944",
+        "MemoryMax": "8589934592",
+        "MemorySwapMax": "1073741824"
+      },
+      "rag-favorite-summary-worker.service": {
+        "ActiveState": "active",
+        "SubState": "running",
+        "StartLimitIntervalUSec": "10s",
+        "StartLimitBurst": "5",
+        "Restart": "on-failure",
+        "RestartUSec": "20s",
+        "MainPID": "3599706",
+        "NRestarts": "0",
+        "OOMPolicy": "stop",
+        "ControlGroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/rag-favorite-summary-worker.service",
+        "MemoryCurrent": "22773760",
+        "MemoryHigh": "infinity",
+        "MemoryMax": "infinity",
+        "MemorySwapMax": "infinity"
+      },
+      "rag-favorite-web.service": {
+        "ActiveState": "active",
+        "SubState": "running",
+        "StartLimitIntervalUSec": "10s",
+        "StartLimitBurst": "5",
+        "Restart": "on-failure",
+        "RestartUSec": "5s",
+        "MainPID": "3599702",
+        "NRestarts": "0",
+        "OOMPolicy": "stop",
+        "ControlGroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/rag-favorite-web.service",
+        "MemoryCurrent": "55287808",
+        "MemoryHigh": "infinity",
+        "MemoryMax": "infinity",
+        "MemorySwapMax": "infinity"
+      },
+      "rag-favorite-xhs-session.service": {
+        "ActiveState": "active",
+        "SubState": "running",
+        "StartLimitIntervalUSec": "5min",
+        "StartLimitBurst": "3",
+        "Restart": "on-failure",
+        "RestartUSec": "15s",
+        "MainPID": "3599686",
+        "NRestarts": "0",
+        "OOMPolicy": "stop",
+        "ControlGroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/rag-favorite-xhs-session.service",
+        "MemoryCurrent": "361541632",
+        "MemoryHigh": "infinity",
+        "MemoryMax": "infinity",
+        "MemorySwapMax": "infinity"
+      },
+      "rag-favorite-imagebind.service": {
+        "ActiveState": "active",
+        "SubState": "running",
+        "StartLimitIntervalUSec": "10s",
+        "StartLimitBurst": "5",
+        "Restart": "on-failure",
+        "RestartUSec": "20s",
+        "MainPID": "5794",
+        "NRestarts": "0",
+        "OOMPolicy": "stop",
+        "ControlGroup": "/user.slice/user-1000.slice/user@1000.service/app.slice/rag-favorite-imagebind.service",
+        "MemoryCurrent": "1580937216",
+        "MemoryHigh": "infinity",
+        "MemoryMax": "infinity",
+        "MemorySwapMax": "infinity"
+      }
+    },
+    "cgroup": {
+      "memory.high": "6442450944",
+      "memory.max": "8589934592",
+      "memory.swap.max": "1073741824",
+      "memory.oom.group": "1"
+    },
+    "pss_kib": 33825,
+    "memory_current": 37191680,
+    "memory_events": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0,
+      "oom_group_kill": 0,
+      "sock_throttled": 0
+    },
+    "stages_running": {},
+    "jobs": {
+      "duplicate": 92,
+      "blocked": 8,
+      "queued": 289,
+      "running": 15,
+      "complete": 2313
+    },
+    "source_gate": [
+      true,
+      false
+    ],
+    "paused": false,
+    "ccr_concurrency": 10,
+    "active_model_calls": 0,
+    "summaries_running": 0,
+    "assertions_passed": true,
+    "worker_cgroup_mib": 35.46875,
+    "before_worker_cgroup_gib": 21.42068099975586
+  }
+}

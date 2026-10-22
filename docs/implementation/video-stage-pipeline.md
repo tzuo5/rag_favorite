@@ -2,23 +2,41 @@
 
 The default loaded video profile uses four durable PostgreSQL stage queues:
 download → prepare → LLM → publish. Each consumer handles one task at a time;
-different consumers overlap across tasks. CPU ASR and GPU ImageBind have separate
-locks. A shared database advisory slot limits CCR to one request across extraction
-and historical summary backfill; another slot serializes summary embedding.
+LLM has `ccr_concurrency` consumers, while the other stages retain one each.
+Xiaohongshu media, including image and Live Photo bundles, now downloads in the
+download stage through the managed session. OCR remains in prepare. See
+[80-item node rotation](xhs-proxy-80-and-desktop-web-20261011.md).
+
+Different consumers overlap across tasks. CPU ASR and GPU ImageBind have separate
+locks. When ASR is configured to use CUDA, it also holds the GPU slot and temporarily
+offloads ImageBind so the two models fit in local memory; ASR and ImageBind then run
+in turn while LLM processing can overlap. Numbered database advisory slots bound
+CCR requests across extraction and historical summary backfill for the library;
+another slot serializes summary embedding. An omitted `ccr_concurrency` retains
+the serial default of one. The active local profile explicitly requests six:
 
 ```toml
 pipeline_enabled = true
 pipeline_prefetch = 2
+ccr_concurrency = 6
 pipeline_temp_bytes = 10737418240
 ```
 
-The coordinator admits at most five active tasks with these defaults. Preparation
+The coordinator admits at most `pipeline_prefetch + ccr_concurrency + 2` active
+tasks: ten with the profile above, or five with the serial default. Preparation
 stops admitting work when two tasks are queued for LLM. A retry retains its current
 task assets; failed tasks are excluded from prefetch capacity but retained bytes
 still count against the temporary storage budget. The budget covers task-owned
 source copies and work files. It is checked before operations and after preparation;
 an operation that crosses the budget is blocked with its output retained. It is
 not a filesystem quota. The existing failed-media TTL still runs in continuous mode.
+
+Concurrency is a maximum, not a requirement to keep six calls in flight. If fewer
+tasks are prepared, fewer LLM consumers can work. Each task keeps its own provider,
+lease and checkpoint files; the six request slots are shared with summary backfill.
+Slot zero keeps the original advisory-lock identity. Runtime changes require a
+paused queue, drained operations and a worker reload; the stage scheduler and
+request limiter must load the same setting.
 
 Apply migration `0009_video_pipeline.sql` while the old worker is stopped. The
 coordinator keeps the original library lock, so an old worker cannot run beside it.
@@ -47,7 +65,8 @@ already-admitted work, drains at most those five IDs and automatically pauses.
 The continuous command has no task limit. `--once` selects a single bounded task.
 
 Transient network errors and HTTP 502/503/504 retry at most twice, after 5/30 seconds.
-HTTP 507, authentication/input errors and incomplete/invalid outputs block their task.
+HTTP 507 and authentication/input errors block their task. A transport-truncated
+stream is retryable; completed but invalid content remains a separate repair gate.
 Three consecutive transport, upstream-buffer (507), or authentication failures
 trigger a 60-second cooldown; the next ordinary request probes recovery.
 Valid completed JSON resets the streak. Semantic
@@ -67,7 +86,8 @@ reached the client. A successful HTTP status alone cannot establish successful
 generation. The client subsequently timed out and the scheduler released the LLM
 stage for another material while retaining the failed material's extraction
 checkpoints for its bounded retry. The existing 600-second network-read timeout
-is preserved; fixing the CCR gateway's termination behavior is separate work.
+is preserved. The later runtime repair closes the gateway's downstream connection
+promptly on upstream body errors; see the [runtime repairs](runtime-repairs-20261010.md).
 
 ## Verification
 

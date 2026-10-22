@@ -22,6 +22,8 @@ MIGRATIONS = (
     "0007_unified_library.sql",
     "0008_video_title_dedup.sql",
     "0009_video_pipeline.sql",
+    "0010_xhs_download_gate.sql",
+    "0011_xhs_session_service.sql",
 )
 
 

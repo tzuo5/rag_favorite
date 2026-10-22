@@ -2,47 +2,106 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#111c27">
-  <title>RAG 任务控制台</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f5f7fb">
+  <meta name="color-scheme" content="light dark">
+  <title>RAG · 私有任务控制台</title>
   <link rel="stylesheet" href="/assets/console.css">
   <script defer src="/assets/console.js"></script>
+  <script defer src="/assets/xhs-panel.js"></script>
 </head>
 <body>
-  <main>
-    <header><div><p class="eyebrow">私有任务控制台</p><h1>RAG 任务进度</h1></div><button id="logout" hidden>退出登录</button></header>
-    <p id="notice" role="status" aria-live="polite">正在连接…</p>
-    <section id="login-panel" class="panel" hidden>
-      <h2>登录你的控制台</h2>
-      <p class="muted">仅已授权设备可访问，登录后查看及控制任务。</p>
-      <form id="login-form">
-        <label>用户名<input id="username" name="username" value="admin" autocomplete="username" required maxlength="100"></label>
-        <label>密码<input id="password" name="password" type="password" autocomplete="current-password" required maxlength="256"></label>
-        <button class="primary" type="submit">登录</button>
-      </form>
-    </section>
-    <div id="dashboard" hidden>
-      <section id="counts" class="stats" aria-label="队列统计"></section>
-      <section class="panel"><h2>四阶段流水线</h2><div id="pipeline" class="stats"></div><p id="pipeline-status" class="muted"></p></section>
-      <section class="panel">
-        <div class="section-head"><div><h2>队列控制</h2><p id="worker" class="muted"></p></div><div class="actions"><button id="start" class="primary">Start · 恢复队列</button><button id="stop" class="danger">Stop · 暂停队列</button></div></div>
-        <p class="muted">Stop 暂停领取新任务，已开始的任务继续完成；Start 不会自动重试失败任务。</p>
-        <p id="freshness" class="muted"></p>
-      </section>
-      <section class="panel"><h2>模型与调用</h2><p id="call-metrics" class="muted"></p><div id="models" class="models"></div><details><summary>最近调用</summary><div id="model-calls" class="jobs"></div></details><p class="muted">调用率统计最近 24 小时保留的 CCR 请求；完整 JSON 仍需通过内容证据校验，发布后才计入可检索完成。</p></section>
-      <section class="panel">
-        <div class="section-head"><h2>任务队列</h2><span id="result-count" class="muted"></span></div>
-        <div class="filters">
-          <label>搜索<input id="search" type="search" placeholder="标题、任务 ID、错误码"></label>
-          <label>状态<select id="state-filter"><option value="">全部</option><option value="running">运行中</option><option value="queued">等待中</option><option value="paused">已暂停</option><option value="complete">已完成</option><option value="duplicate">已合并</option><option value="published">清理中</option><option value="blocked">受阻</option><option value="failed">失败</option></select></label>
-          <label>分类<select id="collection-filter"><option value="">全部分类</option></select></label>
+  <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-overview" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
+    <symbol id="i-tasks" viewBox="0 0 24 24"><path d="m3 6 2 2 3-4M11 6h10M3 13l2 2 3-4m3 2h10M3 20l2 2 3-4m3 2h10"/></symbol>
+    <symbol id="i-runtime" viewBox="0 0 24 24"><path d="M2 12h4l3-8 6 16 3-8h4"/></symbol>
+    <symbol id="i-account" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 8a8 8 0 1 0 0 8M20 3v5h-5"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+  </defs></svg>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <section id="login-panel" class="auth-shell" hidden aria-labelledby="login-title">
+    <div class="brand-mark" aria-hidden="true">R</div><p class="eyebrow">你的私有知识工作台</p>
+    <h1 id="login-title">欢迎回来</h1><p class="muted">登录后查看处理进度，继续管理你的知识库。</p>
+    <form id="login-form">
+      <label>用户名<input id="username" name="username" autocomplete="username" required maxlength="100" autocapitalize="none" spellcheck="false"></label>
+      <label>密码<input id="password" name="password" type="password" autocomplete="current-password" required maxlength="256"></label>
+      <p id="login-error" class="inline-error" role="alert" hidden></p>
+      <button class="primary" type="submit">登录控制台 <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+    </form><p class="auth-footnote">私人网络连接 · 仅授权设备可访问</p>
+  </section>
+  <div id="dashboard" class="app-shell" hidden>
+    <nav id="navigation" class="navigation" aria-label="主要导航">
+      <a class="brand" href="#overview"><span class="brand-mark" aria-hidden="true">R</span><span>RAG<span class="brand-caption">私有任务控制台</span></span></a>
+      <div class="nav-items">
+        <button data-view="overview" aria-label="总览"><svg class="icon" aria-hidden="true"><use href="#i-overview"/></svg><span>总览</span></button>
+        <button data-view="tasks" aria-label="任务"><svg class="icon" aria-hidden="true"><use href="#i-tasks"/></svg><span>任务</span></button>
+        <button data-view="runtime" aria-label="运行"><svg class="icon" aria-hidden="true"><use href="#i-runtime"/></svg><span>运行</span></button>
+        <button data-view="account" aria-label="账号"><svg class="icon" aria-hidden="true"><use href="#i-account"/></svg><span>账号</span></button>
+      </div>
+      <div class="nav-foot"><span class="status-dot"></span> 私有工作空间<p>任务在后台持续运行</p></div>
+    </nav>
+    <main id="main-content" class="main-content" tabindex="-1">
+      <header class="topbar"><div><p class="eyebrow" id="view-eyebrow">WORKSPACE / OVERVIEW</p><h1 id="view-title">工作概览</h1></div><div class="topbar-actions"><span id="connection-status" class="connection" role="status">正在连接</span><button id="refresh" class="icon-button" aria-label="刷新当前状态" title="刷新当前状态"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button></div></header>
+      <p id="stale-banner" class="banner warning" role="status" hidden></p>
+      <p id="pause-banner" class="banner warning" role="status" hidden>队列已全局暂停。等待任务仍保留在队列中，正在执行的操作保存结果后暂停。</p>
+      <section id="view-overview" class="view" aria-label="总览">
+        <button id="xhs-alert" class="source-alert" hidden><span id="xhs-alert-text"></span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+        <section class="hero panel">
+          <div class="hero-content"><p class="eyebrow">队列状态</p><h2 id="queue-title">正在读取运行状态</h2><p id="worker" class="muted"></p><p id="freshness" class="fine-print"></p></div>
+          <div class="queue-actions"><button id="start" class="primary">恢复队列</button><button id="stop">暂停队列</button></div>
+          <details class="operation-note"><summary>队列操作说明</summary><p>暂停领取新阶段和新模型调用，正在执行的操作保存结果后暂停。恢复队列不会自动重试失败任务，也不会恢复单独暂停的任务。</p></details>
+        </section>
+        <div id="counts" class="metrics" aria-label="关键统计"></div>
+        <p id="all-counts" class="secondary-counts"></p>
+        <div class="overview-grid">
+          <section class="panel"><div class="section-head"><div><p class="eyebrow">PROCESS</p><h2>四阶段流水线</h2></div><button class="text-button" data-go="runtime">查看运行</button></div><div id="pipeline" class="pipeline"></div><p id="pipeline-status" class="fine-print"></p></section>
+          <section class="panel"><div class="section-head"><div><p class="eyebrow">NEEDS ATTENTION</p><h2>待处理事项</h2></div><span id="exception-total" class="badge"></span></div><div id="exceptions" class="exceptions"></div></section>
         </div>
-        <p class="muted">进度表示当前阶段的实际帧数或片段数，不代表整个任务的完成百分比。</p>
-        <div id="jobs" class="jobs"></div>
-        <div class="pagination"><button id="previous">上一页</button><span id="page-label"></span><button id="next">下一页</button></div>
       </section>
-      <section class="panel"><h2>任务日志</h2><pre id="logs"></pre></section>
-    </div>
-  </main>
+      <section id="view-tasks" class="view" aria-label="任务" hidden>
+        <div class="panel task-toolbar">
+          <div class="section-head"><h2>任务库</h2><span id="result-count" class="muted">正在读取任务</span></div>
+          <div class="filters"><label class="search-field">搜索任务<input id="search" type="search" placeholder="标题、任务 ID 或错误码" maxlength="200"></label><label>状态<select id="state-filter"><option value="">全部状态</option><option value="attention">需处理</option><option value="running">运行中</option><option value="queued">等待中</option><option value="paused">已暂停</option><option value="complete">已完成</option><option value="duplicate">已合并</option><option value="published">清理中</option><option value="blocked">受阻</option><option value="failed">失败</option></select></label><label id="reason-label">原因<select id="reason-filter"><option value="">全部原因</option></select></label><label id="collection-label" hidden>集合<select id="collection-filter"><option value="">全部集合</option></select></label></div>
+          <div class="list-status"><p id="jobs-status" class="fine-print" role="status">进度仅表示当前阶段，不代表任务总完成百分比。</p><button id="list-update" class="soft-button" hidden>列表有更新 · 点击刷新</button></div>
+          <div class="pagination"><button id="previous" aria-label="上一页">上一页</button><span id="page-label">1 / 1</span><button id="next" aria-label="下一页">下一页</button></div>
+        </div>
+        <div class="task-workspace">
+          <div><div class="list-heading" aria-hidden="true"><span>任务 / 当前进度</span><span>状态</span></div><div id="jobs" class="jobs" aria-label="任务列表"></div><div class="pagination bottom-pagination"><button data-page="previous">上一页</button><span id="page-label-bottom"></span><button data-page="next">下一页</button></div></div>
+          <button id="detail-backdrop" class="detail-backdrop" aria-label="关闭任务详情" tabindex="-1" hidden></button>
+          <aside id="detail-pane" class="detail-pane" data-open="false" aria-label="任务详情">
+            <div id="detail-empty" class="detail-empty"><svg class="icon" aria-hidden="true"><use href="#i-tasks"/></svg><h2>选择一项任务</h2><p>在这里查看进度、原因与操作。</p></div>
+            <div id="detail-content" class="detail-content" hidden>
+              <div class="detail-head"><span class="eyebrow">任务详情</span><div class="actions"><button id="detail-expand" class="text-button" aria-label="展开任务详情">展开</button><button id="detail-close" class="icon-button" aria-label="关闭任务详情"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div></div>
+              <div id="detail-scroll" class="detail-scroll"><span id="detail-state" class="badge"></span><h2 id="detail-title" tabindex="-1"></h2><p id="detail-progress" class="muted"></p><p id="detail-error" class="inline-error" role="status" hidden></p><dl id="detail-fields"></dl></div>
+              <div class="detail-footer"><p id="detail-feedback" role="status" hidden></p><div class="job-buttons"><button id="detail-start" class="primary">恢复任务</button><button id="detail-stop">暂停任务</button></div></div>
+            </div>
+          </aside>
+        </div>
+      </section>
+      <section id="view-runtime" class="view" aria-label="运行" hidden>
+        <section class="panel"><div class="section-head"><div><p class="eyebrow">MODEL ACTIVITY</p><h2>模型与调用</h2></div><span class="muted">自动更新</span></div><div id="models" class="models"></div></section>
+        <section class="panel"><h2>调用质量</h2><div id="call-metrics" class="call-metrics"></div><p class="fine-print">统计最近 24 小时保留的 CCR 请求。HTTP 成功、有效输出、发布后可检索分别统计。</p><details class="call-history"><summary>最近调用 <span class="muted">当前保留记录，展示最近 20 项</span></summary><div id="model-calls" class="call-list"></div></details></section>
+        <section class="panel"><div class="section-head"><h2>运行日志</h2><span class="muted">最近保留的最多 40 条</span></div><pre id="logs" tabindex="0" aria-label="最近运行日志"></pre><p class="fine-print">此处是当前保留的运行记录，不代表单个任务的完整历史。</p></section>
+      </section>
+      <section id="view-account" class="view" aria-label="账号" hidden>
+        <section class="panel" id="xhs-panel"><div class="section-head"><div><p class="eyebrow">CONNECTED SOURCE</p><h2>小红书会话</h2></div><span class="badge">私人连接</span></div><p id="xhs-status" role="status">正在读取会话状态…</p><p id="xhs-error" class="inline-error" role="alert" hidden></p><div id="xhs-paths" class="source-paths"></div><p id="xhs-counters" class="fine-print"></p>
+          <p id="xhs-network" class="fine-print" role="status"></p>
+          <p id="xhs-budget" class="fine-print"></p><p id="xhs-recovery" class="fine-print" role="status"></p>
+          <p id="xhs-diagnostics" class="fine-print"></p>
+          <div class="actions source-actions"><button id="xhs-check">检查读取能力</button><button id="xhs-login" class="primary">登录与验证</button><button id="xhs-acceptance" hidden>开始三条入库验收</button><button id="xhs-network-pause">暂停小红书访问</button><button id="xhs-network-resume">恢复小红书访问</button><button id="xhs-cancel" hidden>结束本次交互</button></div>
+          <p id="xhs-frame-time" class="fine-print">截图刷新不等于重新验证。</p>
+          <div id="xhs-interaction" class="verification" hidden><h3>完成平台验证</h3><p class="muted">用小红书 App 扫码并确认，也可打开二维码链接。下方画面仅用于登录与验证。</p><img id="xhs-qr" alt="小红书登录二维码" hidden><p><a id="xhs-qr-link" rel="noreferrer" hidden>打开二维码链接</a></p><div class="actions"><button id="xhs-frame-refresh">刷新画面 / 二维码</button><button id="xhs-frame-expand" aria-pressed="false">放大验证画面</button></div><p class="fine-print">验证画面内可点击或拖动；请从画面外滚动页面。横屏或放大可更清楚地操作。</p><div id="xhs-frame-container"><img id="xhs-frame" alt="小红书登录验证页面，可点击或拖动" draggable="false"></div><form id="xhs-otp-form"><label>平台要求的短信验证码<input id="xhs-otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" minlength="4" maxlength="8" aria-label="短信验证码"></label><button type="submit" class="primary">提交验证码</button></form></div>
+          <details class="operation-note"><summary>连接与访问说明</summary><p>小红书访问使用统一节点；每个节点成功下载并校验 80 条内容后切换，一条图文含全部图片及可获取的 Live Photo 计一次。失败和缓存不计数。线路故障时提前切换；验证码、账号异常与限流会暂停相关访问。关闭页面不影响后台处理。</p></details>
+        </section>
+        <section class="panel preferences"><div><p class="eyebrow">PREFERENCES</p><h2>界面设置</h2><p class="muted">主题设置保存在当前浏览器。</p></div><label>外观<select id="theme"><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label></section>
+        <section class="panel logout-panel"><div><h2>控制台会话</h2><p class="muted">退出或关闭页面不影响后台任务。</p></div><button id="logout">退出登录</button></section>
+      </section>
+      <footer class="page-foot">RAG · 私有任务控制台 <span>状态以最近一次采集为准</span></footer>
+    </main>
+  </div>
+  <div id="notice" class="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title"><h2 id="confirm-title">确认队列操作</h2><p id="confirm-message"></p><div class="actions"><button id="confirm-cancel">取消</button><button id="confirm-accept" class="primary">确认</button></div></dialog>
 </body>
 </html>

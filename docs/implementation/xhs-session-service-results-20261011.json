@@ -1,0 +1,136 @@
+{
+  "at": 1791741754.73455,
+  "units": {
+    "rag-favorite-xhs-session.service": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "MainPID": "535791"
+    },
+    "rag-favorite-video-worker.service": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "MainPID": "535948"
+    },
+    "rag-favorite-summary-worker.service": {
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "MainPID": "0"
+    },
+    "rag-favorite-web.service": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "MainPID": "520956"
+    },
+    "rag-favorite-favorites.timer": {
+      "ActiveState": "active",
+      "SubState": "waiting"
+    },
+    "rag-favorite-following.timer": {
+      "ActiveState": "active",
+      "SubState": "waiting"
+    },
+    "rag-favorite-following-continue.timer": {
+      "ActiveState": "active",
+      "SubState": "waiting"
+    }
+  },
+  "gate": {
+    "login_required": false,
+    "download_blocked": false,
+    "cooldown": null,
+    "version": 30
+  },
+  "completed_downloads_since_resume": 3,
+  "running_stages": {
+    "download": 1,
+    "llm": 1,
+    "prepare": 1
+  },
+  "queue_paused": false,
+  "session": {
+    "version": 30,
+    "paths": {
+      "note": {
+        "state": "valid",
+        "last_success_at": 1791741745.3304813,
+        "checked_at": 1791741745.3304813
+      },
+      "owner": {
+        "state": "valid",
+        "last_success_at": 1791741681.9813576,
+        "checked_at": 1791741681.9813576
+      },
+      "favorites": {
+        "state": "valid",
+        "checked_at": 1791740992.526277,
+        "last_success_at": 1791740992.526277
+      },
+      "following": {
+        "state": "valid",
+        "checked_at": 1791741012.133794,
+        "last_success_at": 1791741012.133794
+      }
+    },
+    "counters": {
+      "owner_attempts": 4,
+      "owner_successes": 4,
+      "favorites_attempts": 1,
+      "favorites_successes": 1,
+      "following_attempts": 1,
+      "following_successes": 1,
+      "note_attempts": 7,
+      "note_successes": 6,
+      "XHS_SESSION_UNKNOWN": 1
+    },
+    "started_at": 1791740917.3658297,
+    "service": "ready",
+    "limits": {
+      "interval_seconds": 15,
+      "notes_per_hour": 60
+    },
+    "login": null
+  },
+  "web": {
+    "/": {
+      "status": 200,
+      "no_store": true
+    },
+    "/assets/xhs-panel.js": {
+      "status": 200,
+      "no_store": true
+    },
+    "/api/xhs/session": {
+      "status": 401
+    }
+  },
+  "tests": {
+    "full_regression": {
+      "passed": 440,
+      "skipped": 79
+    },
+    "final_browser_web_and_database_checks": {
+      "passed": 53
+    },
+    "final_session_unit_checks": {
+      "passed": 17
+    },
+    "ruff": "passed",
+    "diff_check": "passed"
+  },
+  "acceptance_boundary": {
+    "real_existing_account": true,
+    "real_favorites_page": true,
+    "real_following_list": true,
+    "real_note_reads_before_and_after_restart": true,
+    "real_phone_sms_or_captcha_required": false,
+    "phone_flow_tested_on_synthetic_pages": true,
+    "long_term_72h_and_7d": "pending_observation",
+    "manual_login_requested": false
+  },
+  "prior_bad_canary": {
+    "detected": true,
+    "preexisting_error": "XHS_SOURCE_TOKEN_REFRESH_UNAVAILABLE",
+    "selection_fixed_and_regression_tested": true,
+    "historical_unknown_event_retained": true
+  }
+}

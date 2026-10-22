@@ -132,9 +132,9 @@ Telegram 已按当前目标取消。已部署实例通过 `bash examples/video_r
 查看，其他 Agent 使用标准 stdio MCP；真实样本与恢复证据见
 [实施记录](docs/implementation/videorag-phases-0-6.md)。
 
-桌面版 [RAG 任务控制台](docs/desktop-gui.md) 可查看真实队列与模型工作状态，
+桌面的 [RAG 任务控制台快捷方式](docs/desktop-gui.md) 在浏览器中查看真实队列与模型工作状态，
 支持整体及单任务 Start / Stop、搜索、筛选、失败重试和任务日志。
-安装 GUI 依赖后运行 `.venv/bin/python examples/install_desktop_gui.py`，
+部署网页服务后运行 `.venv/bin/python examples/install_desktop_gui.py`，
 双击桌面图标即可打开。Stop 暂停领取新任务，已开始的任务继续完成。
 
 也可部署 [私有网页任务控制台](docs/web-console.md)，通过 Tailscale 私有 HTTPS

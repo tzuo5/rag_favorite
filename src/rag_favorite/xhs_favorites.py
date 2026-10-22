@@ -23,6 +23,7 @@ from .xhs_private import (
     private_json,
     private_open,
 )
+from .xhs_session_policy import WAIT_CODES
 
 NOTE_ID = re.compile(r"^[a-f0-9]{24}$")
 
@@ -170,7 +171,8 @@ def sync_favorites(
                 save_state(path, state)
                 if not more:
                     return state
-                time.sleep(pause)
+                if not getattr(video, "xhs_proxy_config", None):
+                    time.sleep(pause)
             state["state"] = "partial"
         except KeyboardInterrupt:
             state.update(state="blocked", error_code="XHS_FAVORITES_SYNC_INTERRUPTED")
@@ -182,5 +184,7 @@ def sync_favorites(
                 and re.fullmatch(r"[A-Z][A-Z0-9_]{2,100}", exc.code or str(exc))
                 else "XHS_FAVORITES_SYNC_FAILED",
             )
+        if state.get("error_code") in WAIT_CODES:
+            state["state"] = "partial"
         save_state(path, state)
         return state

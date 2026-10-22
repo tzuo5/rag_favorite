@@ -196,22 +196,9 @@ class XiaohongshuAuthorDiscoveryAdapter:
         )
 
     def _download_profile_html(self, canonical: str) -> str:
-        headers = {
-            key: str(value)
-            for key, value in ytdlp_http_headers().items()
-            if value is not None
-        }
-        headers["Accept-Encoding"] = "identity"
-        request = urllib.request.Request(canonical, headers=headers)
-        with self._opener.open(request, timeout=30) as response:
-            payload = response.read(MAX_PROFILE_HTML_BYTES + 1)
-            if len(payload) > MAX_PROFILE_HTML_BYTES:
-                raise DiscoveryAdapterError(
-                    PlatformErrorCode.EXTRACTOR_SCHEMA_CHANGED.value,
-                    "小红书作者页响应超过安全上限",
-                )
-            charset = response.headers.get_content_charset() or "utf-8"
-        return payload.decode(charset, errors="replace")
+        raise DiscoveryAdapterError(
+            "XHS_SESSION_SERVICE_REQUIRED", "请使用 RAG 统一会话服务访问小红书。"
+        )
 
     async def _parse_and_paginate(
         self, state: Any, canonical: str, scan_limit: int
@@ -684,30 +671,9 @@ class XiaohongshuAuthorDiscoveryAdapter:
     def _request_api_json(
         self, request: urllib.request.Request
     ) -> dict[str, Any]:
-        try:
-            with self._opener.open(request, timeout=30) as response:
-                raw = response.read(MAX_API_RESPONSE_BYTES + 1)
-                if len(raw) > MAX_API_RESPONSE_BYTES:
-                    raise DiscoveryAdapterError(
-                        PlatformErrorCode.EXTRACTOR_SCHEMA_CHANGED.value,
-                        "小红书作者作品接口响应超过安全上限",
-                    )
-                charset = response.headers.get_content_charset() or "utf-8"
-        except urllib.error.HTTPError as exc:
-            raise _http_api_error(exc.code) from exc
-        except urllib.error.URLError as exc:
-            raise DiscoveryAdapterError(
-                PlatformErrorCode.NETWORK_ERROR.value,
-                "小红书网络访问失败",
-            ) from exc
-        try:
-            payload = json.loads(raw.decode(charset, errors="replace"))
-        except json.JSONDecodeError as exc:
-            raise DiscoveryAdapterError(
-                PlatformErrorCode.EXTRACTOR_SCHEMA_CHANGED.value,
-                "小红书作者作品接口未返回 JSON",
-            ) from exc
-        return _validated_api_payload(payload)
+        raise DiscoveryAdapterError(
+            "XHS_SESSION_SERVICE_REQUIRED", "请使用 RAG 统一会话服务访问小红书。"
+        )
 
 
 def _load_cookie_jar(cookie_file: str | None) -> http.cookiejar.CookieJar:

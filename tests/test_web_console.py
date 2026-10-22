@@ -93,6 +93,61 @@ def login(client):
     return response.json()["csrf"]
 
 
+def test_xhs_routes_reuse_auth_csrf_and_redact_inputs(setup, monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
+    from rag_favorite.xhs_session_rpc import SessionRPC
+
+    client, backend, _, _ = setup
+    backend.video = SimpleNamespace(root=tmp_path / "data")
+    calls = []
+    monkeypatch.setattr(
+        SessionRPC,
+        "call",
+        lambda self, op, **params: calls.append((op, params)) or {"service": "ready"},
+    )
+    assert client.get("/api/xhs/session").status_code == 401
+    assert (
+        client.get("/api/xhs/frame", params={"attempt_id": str(uuid4())}).status_code
+        == 401
+    )
+    token = login(client)
+    assert client.get("/api/xhs/session").json() == {"service": "ready"}
+    body = {"action": "login_start", "request_id": str(uuid4())}
+    assert client.post("/api/xhs/action", json=body).status_code == 403
+    headers = {"x-csrf-token": token}
+    response = client.post("/api/xhs/action", json=body, headers=headers)
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert client.post("/api/xhs/action", json=body, headers=headers).status_code == 409
+    body = {"action": "otp", "request_id": str(uuid4()), "code": "PRIVATE_NOT_A_CODE"}
+    response = client.post("/api/xhs/action", json=body, headers=headers)
+    assert response.status_code == 422 and "PRIVATE" not in response.text
+    assert all(op != "otp" for op, _ in calls)
+
+
+def test_xhs_does_not_expose_general_browser_control(setup, monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
+    from rag_favorite.xhs_session_rpc import SessionRPC
+
+    client, backend, _, _ = setup
+    backend.video = SimpleNamespace(root=tmp_path / "data")
+    monkeypatch.setattr(
+        SessionRPC,
+        "call",
+        lambda *_a, **_k: pytest.fail("Invalid operation reached the service"),
+    )
+    token = login(client)
+    for operation in ("navigate", "evaluate", "cookies", "download"):
+        response = client.post(
+            "/api/xhs/action",
+            json={"action": operation, "request_id": str(uuid4())},
+            headers={"x-csrf-token": token},
+        )
+        assert response.status_code == 422
+
+
 @pytest.mark.parametrize(
     "headers",
     [

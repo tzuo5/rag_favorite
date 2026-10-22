@@ -14,6 +14,7 @@ from .database import connect_database
 from .embedding import client_from_config, embedding_space_id
 from .indexes import resolve_index
 from .knowledge_summaries import atomic_text, summary_chunks, text_hash
+from .observation import timed
 from .title_dedup import title_text
 from .video_store import library_id
 
@@ -192,6 +193,7 @@ def extractive_summary(draft, title):
     return "# " + title + "\n\n" + "\n\n".join(x[2] for x in sorted(selected)) + "\n"
 
 
+@timed("unified_summary_index_and_publish")
 def publish_summary(config, video, generation, doc_id, summary, *, encoder=None):
     profile = resolve_index(config)
     space = embedding_space_id(profile.embedding)
@@ -297,6 +299,7 @@ def publish_summary(config, video, generation, doc_id, summary, *, encoder=None)
     }
 
 
+@timed("materialize_media_draft")
 def materialize_media_draft(config, video, job_id, draft):
     from .knowledge_migration import copy_image
     from .video_store import digest_file

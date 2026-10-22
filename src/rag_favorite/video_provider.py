@@ -19,6 +19,7 @@ from uuid import uuid4
 
 from .config import ConfigError
 from .model_activity import activity_call, annotate_call, model_call
+from .observation import span
 from .pipeline_fence import before_operation, llm_slot
 from .video_config import VideoConfig
 
@@ -35,7 +36,9 @@ class ProviderUnavailable(RuntimeError):
         error_category: str | None = None,
     ):
         super().__init__(message)
-        self.code = code
+        self.code = code or (
+            message if re.fullmatch(r"[A-Z][A-Z0-9_]{1,80}", message) else None
+        )
         self.diagnostics = diagnostics or {}
         self.status_code = status_code
         self.retryable = retryable
@@ -106,7 +109,10 @@ def provider_call_kind(provider, kind):
 
 def local_encoder(config: VideoConfig, operation: str, payload: dict) -> dict:
     key = {"transcribe": "ASR", "embed-video": "ImageBind"}.get(operation)
-    with activity_call(key, operation):
+    with (
+        activity_call(key, operation),
+        span("request", (key or "Encoder") + "." + operation),
+    ):
         return _local_encoder(config, operation, payload)
 
 
@@ -289,7 +295,18 @@ class CCRProvider:
             with llm_slot(self.config):
                 before_operation()
                 diagnostics["request_sent"] = True
-                with urllib.request.urlopen(req, timeout=timeout) as response:
+                with (
+                    span(
+                        "request",
+                        "CCR.http",
+                        request_id=client_request_id,
+                        model=self.config.model,
+                        images=len(images or []),
+                        request_bytes=len(req.data),
+                        call_kind=self.call_kind,
+                    ),
+                    urllib.request.urlopen(req, timeout=timeout) as response,
+                ):
                     diagnostics["http_status"] = getattr(response, "status", 200)
                     diagnostics.update(
                         _response_diagnostics(

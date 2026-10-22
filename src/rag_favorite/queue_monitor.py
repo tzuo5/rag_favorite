@@ -39,6 +39,26 @@ PIPELINE_STAGES = {
     "llm": "LLM",
     "publish": "发布",
 }
+SOURCE_ERROR_LABELS = {
+    "XHS_LOGIN_REQUIRED": "小红书需要重新登录",
+    "XHS_LOGIN_OR_VERIFICATION_REQUIRED": "历史小红书访问异常，等待核实具体原因",
+    "XHS_DEFERRED": "等待小红书会话操作",
+    "XHS_PROXY_UNAVAILABLE": "等待小红书节点代理恢复",
+    "XHS_PROXY_COOLDOWN": "小红书节点池冷却中",
+    "XHS_PROXY_PAUSED": "小红书网络访问已暂停",
+    "XHS_PROXY_STALE_GENERATION": "节点已切换，等待核对下载记录",
+    "XHS_ACCEPTANCE_PAUSED": "等待本批下载验收",
+    "XHS_SESSION_UNAVAILABLE": "等待小红书会话服务",
+    "XHS_AUTH_REQUIRED": "小红书需要手机登录",
+    "XHS_VERIFICATION_REQUIRED": "小红书需要手机验证",
+    "XHS_PLATFORM_BLOCKED": "小红书访问受限，等待冷却",
+    "XHS_RATE_LIMITED": "小红书请求限流，等待冷却",
+    "XHS_SESSION_UNKNOWN": "小红书访问异常，原因待核实",
+    "XHS_ACCOUNT_MISMATCH": "小红书账号与原绑定账号不符",
+    "XHS_SOURCE_URL_REQUIRED": "需要有效的小红书来源链接",
+    "XHS_SOURCE_VALIDATION_REQUIRED": "来源信息已保留，等待小红书访问恢复后验证",
+    "XHS_NOTE_UNAVAILABLE": "该小红书笔记暂时无法访问",
+}
 
 
 def _call_records(video):
@@ -141,15 +161,28 @@ def _searchable_completed(db, config, video):
     if not available or not all(available):
         return None
     if config.unified:
-        sql = """SELECT count(DISTINCT j.id) FROM public.rag_video_jobs j
-            JOIN public.rag_knowledge_documents d ON d.source_job_id=j.id AND d.library_id=j.library_id
-            JOIN public.rag_library_state l ON l.library_id=j.library_id
+        sql = """WITH searchable AS (
+            SELECT d.id,d.source_job_id,d.library_id
+            FROM public.rag_knowledge_documents d
+            JOIN public.rag_library_state l ON l.library_id=d.library_id
             JOIN public.rag_document_summaries s ON s.document_id=d.id
                 AND s.library_id=l.library_id AND s.generation=l.active_generation
-            WHERE j.library_id=%s AND j.state='complete' AND EXISTS (
+            WHERE EXISTS (
                 SELECT 1 FROM public.rag_document_summary_chunks c
                 WHERE c.document_id=s.document_id AND c.library_id=s.library_id
-                    AND c.generation=s.generation)"""
+                    AND c.generation=s.generation))
+            SELECT count(*) FROM public.rag_video_jobs j
+            WHERE j.library_id=%s AND j.state='complete' AND (
+                EXISTS (SELECT 1 FROM searchable d
+                    WHERE d.source_job_id=j.id AND d.library_id=j.library_id)
+                OR (j.stage='legacy_knowledge_imported'
+                    AND jsonb_array_length(coalesce(
+                        j.payload#>'{accepted_knowledge,document_ids}','[]'::jsonb))>0
+                    AND NOT EXISTS (
+                        SELECT 1 FROM jsonb_array_elements_text(
+                            j.payload#>'{accepted_knowledge,document_ids}') accepted(id)
+                        WHERE NOT EXISTS (SELECT 1 FROM searchable d
+                            WHERE d.id::text=accepted.id AND d.library_id=j.library_id))))"""
     else:
         sql = """SELECT count(DISTINCT j.id) FROM public.rag_video_jobs j
             JOIN public.rag_knowledge_summaries s ON s.job_id=j.id AND s.library_id=j.library_id
@@ -200,6 +233,7 @@ def describe_stage(stage: str) -> tuple[str, str, str]:
         "cleanup": ("清理受管文件", "—", "—"),
         "cleanup_failed": ("等待清理重试", "—", "—"),
         "complete": ("已完成", "—", "完成"),
+        "legacy_knowledge_imported": ("已有知识直接入库", "—", "原文与摘要可检索"),
         "title_duplicate": ("同标题已合并", "—", "无需重复处理"),
         "text_only": ("图文正文已入库", "Embedding", "完成"),
         "media_expired": ("媒体已过期", "—", "—"),
@@ -609,6 +643,7 @@ class QueueMonitor:
             if phase_state == "retry_wait":
                 progress = "等待重试"
             reason = phase.get("error_code") or phase.get("blocked_reason") or code
+            reason = SOURCE_ERROR_LABELS.get(reason, reason)
             paused = job_id in control.paused_jobs
             if state == "queued" and not paused:
                 rank += 1

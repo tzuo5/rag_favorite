@@ -30,7 +30,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-gui = ["PySide6-Essentials>=6.8,<7"]
 web = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
 mcp = ["mcp>=1.26,<2", "pydantic>=2.7,<3"]
 video-sources = ["playwright>=1.51,<2", "yt-dlp[default]>=2024.12.13", "xhshow>=0.1.9,<0.3"]
@@ -65,7 +64,7 @@ rag-favorite-mcp = "rag_favorite.mcp_server:main"
 rag-favorite-video = "rag_favorite.video_cli:main"
 rag-favorite-video-mcp = "rag_favorite.video_mcp:main"
 rag-favorite-video-worker = "rag_favorite.video_worker:main"
-rag-favorite-gui = "rag_favorite.desktop_gui:main"
+rag-favorite-gui = "rag_favorite.desktop_launcher:main"
 rag-favorite-web = "rag_favorite.web_console:main"
 
 [tool.setuptools]

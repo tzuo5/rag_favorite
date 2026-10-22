@@ -1,0 +1,202 @@
+{
+  "environment": {
+    "started_at": "2026-10-11T01:41:02.731116+00:00",
+    "source": ".runtime/videorag/data/assets/<private-source>",
+    "source_sha256": "<private-source-digest>",
+    "cpu": "Intel Core i7-13700H",
+    "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "gpu_total_bytes": 8184201216,
+    "nvml_status": "Driver/library version mismatch: kernel 595.91.07, NVML 595.99; CUDA inference smoke passed",
+    "medium_revision": "08e178d48790749d25932bbc082711ddcfdfbc4f",
+    "large_v3_repo": "Systran/faster-whisper-large-v3",
+    "large_v3_revision": "edaa852ec7e145841d8ffdb056a99866b5f0a478",
+    "production_services_original": {
+      "rag-favorite-video-worker.service": "active",
+      "rag-favorite-imagebind.service": "active"
+    },
+    "note": "First CPU run overlapped short GPU smoke; only subsequent three measured runs used for comparisons. Other resident GPU workloads were not stopped."
+  },
+  "audio_seconds": 168.4375625,
+  "successful": {
+    "medium-cpu": {
+      "audio_sha256": "<private-source-digest>",
+      "audio_seconds": 168.4375625,
+      "model": "/home/tzuo5/gpt projects/rag_favorite/.runtime/video-encoder/asr-medium",
+      "device": "cpu",
+      "compute_type": "int8",
+      "cpu_threads": 4,
+      "num_workers": 1,
+      "parameters": {
+        "beam_size": 5,
+        "vad_filter": true,
+        "word_timestamps": true,
+        "language": null
+      },
+      "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.43",
+      "versions": {
+        "faster-whisper": "1.2.1",
+        "ctranslate2": "4.8.2",
+        "av": "18.1.0"
+      },
+      "runs": [
+        {
+          "label": "first",
+          "elapsed_seconds": 62.42782855400583,
+          "real_time_factor": 0.3706289002727988,
+          "language": "zh",
+          "segment_count": 81,
+          "duration_after_vad": 160.5015625,
+          "peak_rss_mib": 2771.75390625
+        },
+        {
+          "label": "warmup",
+          "elapsed_seconds": 60.98442833899753,
+          "real_time_factor": 0.36205955152668234,
+          "language": "zh",
+          "segment_count": 81,
+          "duration_after_vad": 160.5015625,
+          "peak_rss_mib": 2771.75390625
+        },
+        {
+          "label": "run1",
+          "elapsed_seconds": 60.888194429979194,
+          "real_time_factor": 0.36148821869812553,
+          "language": "zh",
+          "segment_count": 81,
+          "duration_after_vad": 160.5015625,
+          "peak_rss_mib": 2771.75390625
+        },
+        {
+          "label": "run2",
+          "elapsed_seconds": 60.98367677698843,
+          "real_time_factor": 0.3620550895646476,
+          "language": "zh",
+          "segment_count": 81,
+          "duration_after_vad": 160.5015625,
+          "peak_rss_mib": 2771.75390625
+        },
+        {
+          "label": "run3",
+          "elapsed_seconds": 61.246460727008525,
+          "real_time_factor": 0.3636152163328089,
+          "language": "zh",
+          "segment_count": 81,
+          "duration_after_vad": 160.5015625,
+          "peak_rss_mib": 2771.75390625
+        }
+      ],
+      "load_seconds": 1.2044944879889954,
+      "summary": {
+        "median_seconds": 60.98367677698843,
+        "min_seconds": 60.888194429979194,
+        "max_seconds": 61.246460727008525,
+        "real_time_factor": 0.3620550895646476
+      },
+      "status": "completed"
+    },
+    "medium-gpu": {
+      "audio_sha256": "<private-source-digest>",
+      "audio_seconds": 168.4375625,
+      "model": "/home/tzuo5/gpt projects/rag_favorite/.runtime/video-encoder/asr-medium",
+      "device": "cuda",
+      "compute_type": "float16",
+      "cpu_threads": 4,
+      "num_workers": 1,
+      "parameters": {
+        "beam_size": 5,
+        "vad_filter": true,
+        "word_timestamps": true,
+        "language": null
+      },
+      "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.43",
+      "versions": {
+        "faster-whisper": "1.2.1",
+        "ctranslate2": "4.8.2",
+        "av": "18.1.0"
+      },
+      "runs": [
+        {
+          "label": "first",
+          "elapsed_seconds": 12.653364855999826,
+          "real_time_factor": 0.07512198982337936,
+          "language": "zh",
+          "segment_count": 110,
+          "duration_after_vad": 160.5015625,
+          "peak_rss_mib": 1651.40234375
+        },
+        {
+          "label": "warmup",
+          "elapsed_seconds": 12.533561402000487,
+          "real_time_factor": 0.0744107265385088,
+          "language": "zh",
+          "segment_count": 110,
+          "duration_after_vad": 160.5015625,
+          "peak_rss_mib": 1651.40234375
+        },
+        {
+          "label": "run1",
+          "elapsed_seconds": 12.69946682601585,
+          "real_time_factor": 0.075395693439911,
+          "language": "zh",
+          "segment_count": 110,
+          "duration_after_vad": 160.5015625,
+          "peak_rss_mib": 1651.40234375
+        },
+        {
+          "label": "run2",
+          "elapsed_seconds": 12.568938049982535,
+          "real_time_factor": 0.07462075479738989,
+          "language": "zh",
+          "segment_count": 110,
+          "duration_after_vad": 160.5015625,
+          "peak_rss_mib": 1651.40234375
+        },
+        {
+          "label": "run3",
+          "elapsed_seconds": 12.59475542799919,
+          "real_time_factor": 0.07477403045415827,
+          "language": "zh",
+          "segment_count": 110,
+          "duration_after_vad": 160.5015625,
+          "peak_rss_mib": 1651.40234375
+        }
+      ],
+      "load_seconds": 0.8509072930028196,
+      "summary": {
+        "median_seconds": 12.59475542799919,
+        "min_seconds": 12.568938049982535,
+        "max_seconds": 12.69946682601585,
+        "real_time_factor": 0.07477403045415827
+      },
+      "status": "completed"
+    }
+  },
+  "large_v3_gpu": {
+    "status": "failed_model_load",
+    "model": "large-v3",
+    "device": "cuda",
+    "compute_type": "float16",
+    "error": "CUDA failed with error out of memory",
+    "timing_available": false,
+    "retry_declined": "User requested keeping embedding model loaded and reporting OOM."
+  },
+  "cpu_to_gpu_speedup": 4.8419897572140735,
+  "raw_results_directory": "/home/tzuo5/gpt projects/rag_favorite/.runtime/whisper-benchmark-20261011",
+  "accuracy": "Not measured; no human ground truth.",
+  "restoration": {
+    "imagebind_health": {
+      "ok": true,
+      "space_id": "8b98ad677fa05e5097ce7bc14e526945220d05020b1a54d6f2a925dd8f9b35c3",
+      "loads": 1,
+      "load_seconds": 18.636,
+      "device": "cuda",
+      "dtype": "float16"
+    },
+    "imagebind_service": "active/running",
+    "video_worker_service": "active/running",
+    "queue_global_paused": false,
+    "embedding_model": "retained, never unloaded",
+    "paused_jobs_note": "Individual job pause list changed concurrently during benchmark; retained current list rather than overwriting with old snapshot."
+  },
+  "_publication_note": "Private source identifiers and local runtime details are anonymized; original evidence remains local."
+}

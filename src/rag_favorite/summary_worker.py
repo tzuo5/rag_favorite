@@ -18,13 +18,14 @@ from .video_store import library_id
 
 
 def enqueue_summaries(config, video, *, retry_failed=False) -> int:
-    """Queue every completed source job, keeping failures visible until retried."""
+    """Backfill completed media jobs; accepted legacy documents have their own index."""
     space = embedding_space_id(resolve_index(config).embedding)
-    with connect_database(config) as c:
+    with connect_database(config, register_pgvector=False) as c:
         result = c.execute(
             """INSERT INTO public.rag_summary_jobs(job_id,library_id,state)
             SELECT j.id,j.library_id,'queued' FROM public.rag_video_jobs j
             WHERE j.library_id=%s AND j.collection=ANY(%s) AND j.state='complete'
+            AND j.stage<>'legacy_knowledge_imported'
             AND NOT EXISTS(SELECT 1 FROM public.rag_knowledge_summaries s
                            WHERE s.job_id=j.id AND s.embedding_space_id=%s)
             ON CONFLICT(job_id) DO UPDATE SET state='queued',stage='queued',error_code=NULL,updated_at=now()
@@ -53,7 +54,8 @@ def enqueue_summaries(config, video, *, retry_failed=False) -> int:
             count += c.execute(
                 """UPDATE public.rag_summary_jobs q SET state='queued',stage='queued',
                 error_code=NULL,updated_at=now() FROM public.rag_video_jobs j
-                WHERE j.id=q.job_id AND q.library_id=%s AND q.state='failed' AND j.state='complete'""",
+                WHERE j.id=q.job_id AND q.library_id=%s AND q.state='failed' AND j.state='complete'
+                AND j.stage<>'legacy_knowledge_imported'""",
                 (library_id(video),),
             ).rowcount
     return count
@@ -63,11 +65,12 @@ def claim_summary(config, video):
     with locked_control(video) as control:
         if control.paused:
             return None
-        with connect_database(config) as c:
+        with connect_database(config, register_pgvector=False) as c:
             row = c.execute(
                 """SELECT q.job_id FROM public.rag_summary_jobs q
                 JOIN public.rag_video_jobs j ON j.id=q.job_id
                 WHERE q.library_id=%s AND q.state='queued' AND j.state='complete'
+                  AND j.stage<>'legacy_knowledge_imported'
                   AND NOT (q.job_id=ANY(%s::uuid[]))
                 ORDER BY j.created_at,q.job_id LIMIT 1 FOR UPDATE OF q SKIP LOCKED""",
                 (library_id(video), list(control.paused_jobs)),
@@ -82,11 +85,12 @@ def claim_summary(config, video):
 
 
 def recover_summary_claims(config, video) -> int:
-    with connect_database(config) as c:
+    with connect_database(config, register_pgvector=False) as c:
         return c.execute(
             """UPDATE public.rag_summary_jobs q SET state='queued',stage='recovered',updated_at=now()
             FROM public.rag_video_jobs j WHERE j.id=q.job_id AND q.library_id=%s
             AND q.state='running' AND j.state='complete'
+            AND j.stage<>'legacy_knowledge_imported'
             AND pg_try_advisory_xact_lock(hashtext('summary:' || q.job_id::text))""",
             (library_id(video),),
         ).rowcount
@@ -113,7 +117,7 @@ def run_summary_worker(config, video, *, once=False, drain=False):
                 try:
                     result = summarize_job(config, video, job_id)
                     if result["state"] == "busy":
-                        with connect_database(config) as c:
+                        with connect_database(config, register_pgvector=False) as c:
                             c.execute(
                                 "UPDATE public.rag_summary_jobs SET state='queued',stage='lock_wait',updated_at=now() WHERE job_id=%s AND state='running'",
                                 (job_id,),

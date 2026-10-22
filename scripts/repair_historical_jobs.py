@@ -56,6 +56,8 @@ def recover(config, video, manifest, *, apply=False):
     if apply and not read_control(video).paused:
         raise RuntimeError("Pause claims before applying recovery")
     for entry in report["jobs"]:
+        if entry.get("recovery") == "deleted_by_user":
+            continue
         with connect_database(config) as db:
             row = db.execute(
                 "SELECT state,payload FROM public.rag_video_jobs WHERE id=%s AND library_id=%s",

@@ -39,6 +39,8 @@ class VideoConfig:
     device: str = "cuda"
     dtype: str = "float32"
     asr_model: Path | None = None
+    asr_device: str = "cpu"
+    asr_compute_type: str = "int8"
     checkpoint: Path | None = None
     checkpoint_sha256: str = ""
     max_asset_bytes: int = 2_000_000_000
@@ -54,7 +56,9 @@ class VideoConfig:
     default_collection: str = "cooking"
     pipeline_enabled: bool = False
     pipeline_prefetch: int = 2
+    ccr_concurrency: int = 1
     pipeline_temp_bytes: int = 10 * 1024**3
+    xhs_proxy_config: Path | None = None
 
     def secret(self, key: str) -> str:
         value = os.environ.get(key) or private_environment(self.credentials_file).get(
@@ -92,8 +96,12 @@ def load_video_config(path: Path | str | None = None) -> VideoConfig:
 
     config = VideoConfig(
         source=selected,
+        xhs_proxy_config=absolute(raw["xhs_proxy_config"])
+        if raw.get("xhs_proxy_config")
+        else None,
         pipeline_enabled=raw.get("pipeline_enabled", True),
         pipeline_prefetch=int(raw.get("pipeline_prefetch", 2)),
+        ccr_concurrency=raw.get("ccr_concurrency", 1),
         pipeline_temp_bytes=int(raw.get("pipeline_temp_bytes", 10 * 1024**3)),
         default_collection=str(raw.get("default_collection", "cooking")),
         root=absolute(raw.get("root", "video-data")),
@@ -108,6 +116,8 @@ def load_video_config(path: Path | str | None = None) -> VideoConfig:
         device=raw.get("device", "cuda"),
         dtype=raw.get("dtype", "float32"),
         asr_model=absolute(raw["asr_model"]) if raw.get("asr_model") else None,
+        asr_device=raw.get("asr_device", "cpu"),
+        asr_compute_type=raw.get("asr_compute_type", "int8"),
         checkpoint=absolute(raw["checkpoint"]) if raw.get("checkpoint") else None,
         checkpoint_sha256=raw.get("checkpoint_sha256", ""),
         max_asset_bytes=int(raw.get("max_asset_bytes", 2_000_000_000)),
@@ -134,9 +144,17 @@ def load_video_config(path: Path | str | None = None) -> VideoConfig:
         not 2 <= config.segment_seconds <= 120
         or type(config.pipeline_enabled) is not bool
         or not 1 <= config.pipeline_prefetch <= 5
+        or type(config.ccr_concurrency) is not int
+        or not 1 <= config.ccr_concurrency <= 16
         or config.pipeline_temp_bytes < config.max_asset_bytes
         or not config.segment_seconds <= config.long_video_segment_seconds <= 120
         or config.device not in {"cpu", "cuda"}
+        or config.asr_device not in {"cpu", "cuda"}
+        or config.asr_compute_type not in {"int8", "float32", "float16", "int8_float16"}
+        or (
+            config.asr_device == "cpu"
+            and config.asr_compute_type in {"float16", "int8_float16"}
+        )
         or config.dtype not in {"float32", "float16"}
         or (config.device == "cpu" and config.dtype != "float32")
         or config.failed_media_ttl_hours < 1

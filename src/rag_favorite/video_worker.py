@@ -24,6 +24,7 @@ from .embedding import embedding_space_id
 from .indexes import resolve_index
 from .knowledge_summaries import atomic_text, summarize_job
 from .model_activity import cache_hit, job_activity
+from .observation import span, timed
 from .pipeline_fence import assert_owner, before_operation
 from .queue_control import locked_control, read_control
 from .video_config import load_video_config
@@ -72,6 +73,7 @@ def atomic_json(path: Path, value):
         os.close(directory)
 
 
+@timed("validate_extraction")
 def validate_extraction(raw: dict, transcript: str, *, visual: bool) -> dict:
     facts = []
     for item in raw.get("facts", [])[:60]:
@@ -235,19 +237,28 @@ def numeric_frame_times(transcript, segment):
 
 def ffmpeg(video, arguments):
     before_operation()
-    result = subprocess.run(
-        [video.ffmpeg, "-nostdin", "-y", "-xerror", *arguments],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE,
-        timeout=180,
-        check=False,
+    operation = (
+        "audio_decode"
+        if "-vn" in arguments
+        else "frame_decode"
+        if "-frames:v" in arguments
+        else "clip_encode"
     )
+    with span("operation", operation):
+        result = subprocess.run(
+            [video.ffmpeg, "-nostdin", "-y", "-xerror", *arguments],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            timeout=180,
+            check=False,
+        )
     if result.returncode:
         raise ProviderUnavailable(
             "Source media could not be fully decoded.", code="MEDIA_DECODE_FAILED"
         )
 
 
+@timed("asr_chunk_pipeline")
 def transcribe_chunks(video, source, work, source_sha, *, progress=None):
     """Bound local ASR requests; persist each timed slice before continuing."""
     probe = local_encoder(video, "probe", {"path": str(source)})
@@ -268,6 +279,8 @@ def transcribe_chunks(video, source, work, source_sha, *, progress=None):
             {
                 "source_sha256": source_sha,
                 "model_sha256": digest_file(model_binary),
+                "asr_device": video.asr_device,
+                "asr_compute_type": video.asr_compute_type,
                 "chunk_seconds": 300,
                 "pipeline": "local-word-timestamps-v1",
             },
@@ -340,6 +353,7 @@ def transcribe_chunks(video, source, work, source_sha, *, progress=None):
     return value
 
 
+@timed("cleanup")
 def cleanup(config, video, job):
     assert_owner()
     job_id = str(job["id"])
@@ -403,6 +417,7 @@ def visual_eligible(video):
     return video.visual_enabled
 
 
+@timed("transcript_prepare")
 def prepare_transcript(video, payload, source, work, *, progress=None):
     """Prefer supplied subtitles; only confirmed absent speech permits vision-only."""
     if payload.get("transcript_asset_id"):
@@ -420,9 +435,14 @@ def prepare_transcript(video, payload, source, work, *, progress=None):
         return [], "no_speech_visual_only"
 
 
-def compatible_checkpoint(saved, cache_key, legacy_cache_key, *, visual):
+def compatible_checkpoint(saved, cache_key, legacy_cache_key, *, visual, segment=None):
     """Never reuse a text-only segment when the requested modality now includes vision."""
     if bool(saved.get("segment", {}).get("video_embedding")) != visual:
+        return False
+    if segment is not None and any(
+        saved.get("segment", {}).get(key) != segment.get(key)
+        for key in ("start", "end", "transcript")
+    ):
         return False
     return saved.get("cache_key") in {cache_key, legacy_cache_key}
 
@@ -497,9 +517,30 @@ def process(config, video, job, *, phase="all"):
                 )
     if payload.get("source_url") and not payload.get("asset_id"):
         update_job(config, video, job_id, "running", "fetch_source")
+        from .xhs_private import atomic_private_json, private_json
         from .xhs_refresh import fetch_with_refresh
 
-        note = fetch_with_refresh(config, video, job, fetcher=fetch_note)
+        cached_source = derived / "download-source.json"
+        source_key = hashlib.sha256(payload["source_url"].encode()).hexdigest()
+        saved_source = private_json(cached_source) if cached_source.is_file() else {}
+        if (
+            saved_source.get("source_key") == source_key
+            and time.time() - saved_source.get("fetched_at", 0) < 1800
+        ):
+            note = saved_source["note"]
+        else:
+            note = fetch_with_refresh(config, video, job, fetcher=fetch_note)
+            derived.mkdir(parents=True, exist_ok=True, mode=0o700)
+            atomic_private_json(
+                cached_source,
+                {
+                    "source_key": hashlib.sha256(
+                        payload["source_url"].encode()
+                    ).hexdigest(),
+                    "fetched_at": time.time(),
+                    "note": note,
+                },
+            )
         payload["title"] = title_text(note.get("title")) or title_text(
             payload.get("title")
         )
@@ -517,7 +558,7 @@ def process(config, video, job, *, phase="all"):
         if note["content_type"] not in {"video", "normal_video"}:
             atomic_json(image_source, metadata)
             return process_image_stage(config, video, job, metadata, phase=phase)
-        manifest = download_note_video(video, note)
+        manifest = download_note_video(video, note, job_id=job_id)
         payload.update(
             asset_id=manifest["asset_id"],
             transcript_asset_id=None,
@@ -664,6 +705,7 @@ def process(config, video, job, *, phase="all"):
                 cache_key,
                 cache_key if eligible else legacy_cache_key,
                 visual=expected_visual,
+                segment=segment,
             )
             if compatible_cache and all(
                 digest_file(video.root / e["relative_path"]) == e["sha256"]
@@ -1128,6 +1170,7 @@ def main():
         return
 
 
+@timed("video_context_prepare")
 def prepare_context(config, video, job):
     job_id, payload = str(job["id"]), job["payload"]
     work = video.root / "work" / job_id
@@ -1205,6 +1248,7 @@ def prepare_context(config, video, job):
     }
 
 
+@timed("clip_and_video_embedding")
 def prepare_visual_segment(config, video, job_id, source, work, segment):
     clip = work / f"segment-{segment['ordinal']}.mp4"
     ffmpeg(
@@ -1272,6 +1316,9 @@ def process_image_stage(config, video, job, note, *, phase):
     job_id = str(job["id"])
     derived = video.root / "derived" / job_id
     if phase == "download":
+        from .xhs_session_rpc import SessionRPC
+
+        SessionRPC(video).call("download_media", note=note, job_id=job_id, wait=True)
         return
     if phase == "prepare":
         _, result = process_image_note(

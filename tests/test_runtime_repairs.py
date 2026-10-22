@@ -3,6 +3,7 @@
 import io
 import json
 import subprocess
+from itertools import pairwise
 from pathlib import Path
 from typing import ClassVar
 
@@ -46,6 +47,16 @@ if (elements.get("start").disabled) throw new Error("Start disabled with inactiv
 if (!elements.get("stop").disabled) throw new Error("Stop enabled without worker capability");
 vm.runInContext('stale=true; controls();',ctx);
 if (!elements.get("start").disabled) throw new Error("stale snapshot enabled Start");
+for (const [job, expected] of [
+  [{state:"running",pipeline_status:"waiting",paused:false},"queued"],
+  [{state:"running",pipeline_status:"retry_wait",paused:true},"paused"],
+  [{state:"running",pipeline_status:"running",paused:true},"running"],
+  [{state:"queued",paused:true},"paused"],
+  [{state:"blocked",pipeline_status:"blocked"},"blocked"]
+]) {
+  ctx.job = job;
+  if (vm.runInContext("jobState(job)", ctx) !== expected) throw new Error("Incorrect stage filter");
+}
 """.replace("SCRIPT", json.dumps(script))
     result = subprocess.run(
         ["node", "-e", harness], capture_output=True, text=True, check=False
@@ -103,7 +114,11 @@ def test_short_download_cannot_be_published_as_asset(tmp_path, monkeypatch):
     )
     video = VideoConfig(root=tmp_path, credentials_file=tmp_path / "secret")
     with pytest.raises(ProviderUnavailable) as caught:
-        download_note_video(video, {"media_url": Response.url, "note_id": "a" * 24})
+        download_note_video(
+            video,
+            {"media_url": Response.url, "note_id": "a" * 24},
+            proxy="http://127.0.0.1:18998",
+        )
     assert caught.value.code == "SOURCE_DOWNLOAD_INCOMPLETE"
     assert caught.value.retryable
     assert not list((tmp_path / "assets").iterdir())
@@ -139,3 +154,34 @@ def test_next_job_phrase_is_not_an_invented_dosage():
     raw["sections"][0]["paragraphs"][0]["text"] = "加一份盐。"
     with pytest.raises(ValueError, match="Unsupported summary number"):
         render_summary(raw, title="职业", source="原文", segments=[segment])
+
+
+@pytest.mark.parametrize("duration,length", [(120.047166, 30), (240.042667, 60)])
+def test_subsecond_tail_is_kept_in_last_useful_segment(duration, length):
+    from rag_favorite.video_transcript import partition_transcript
+
+    transcript = [{"start": duration - 0.03, "end": duration, "text": "尾段文字"}]
+    segments = partition_transcript(transcript, duration, length)
+    assert len(segments) == 4
+    assert segments[-1]["end"] == duration
+    assert "尾段文字" in segments[-1]["transcript"]
+    assert all(s["end"] - s["start"] >= 1 for s in segments)
+    assert segments[0]["start"] == 0
+    assert all(a["end"] == b["start"] for a, b in pairwise(segments))
+
+
+def test_merged_tail_does_not_reuse_a_shorter_segment_checkpoint():
+    from rag_favorite.video_worker import compatible_checkpoint
+
+    original = {"start": 90, "end": 120, "transcript": "正文"}
+    saved = {"cache_key": "same", "segment": original}
+    assert compatible_checkpoint(
+        saved, "same", "same", visual=False, segment=dict(original)
+    )
+    assert not compatible_checkpoint(
+        saved,
+        "same",
+        "same",
+        visual=False,
+        segment={"start": 90, "end": 120.047166, "transcript": "正文\n尾段文字"},
+    )

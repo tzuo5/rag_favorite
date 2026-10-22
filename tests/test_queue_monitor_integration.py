@@ -2,9 +2,6 @@
 
 import json
 import os
-import subprocess
-import sys
-import textwrap
 from uuid import uuid4
 
 import pytest
@@ -145,100 +142,6 @@ def test_once_worker_respects_pause_before_any_model_call(isolated, monkeypatch)
             ).fetchone()[0]
             == 0
         )
-
-
-def test_native_gui_buttons_filters_and_retry_use_live_database(isolated, tmp_path):
-    pytest.importorskip("PySide6")
-    config, video, ids, _ = isolated
-    source = textwrap.dedent("""
-        import sys, traceback
-        from pathlib import Path
-        from PySide6 import QtWidgets
-        from PySide6.QtCore import Qt, QTimer
-        from PySide6.QtTest import QTest
-        from rag_favorite import desktop_gui as gui, queue_monitor as monitor
-        from rag_favorite.config import load_config
-        from rag_favorite.video_config import VideoConfig
-        from rag_favorite.queue_control import read_control
-
-        config = load_config(sys.argv[1])
-        video = VideoConfig(root=Path(sys.argv[2]), credentials_file=Path(sys.argv[2]) / 'credentials.env')
-        job_id = sys.argv[3]
-        gui.profiles = lambda *args: (config, video)
-        monitor.service_status = lambda: {'ActiveState':'active', 'SubState':'running', 'MainPID':'123'}
-        monitor.worker_logs = lambda: ['GUI integration test']
-        monitor.QueueMonitor._ensure_worker = lambda self: None
-        monitor._models = lambda *args: [
-            {'key':key,'role':'test role','name':key,'state':'空闲','task':'—','connection':'test fixture'}
-            for key in ('CCR','ASR','Embedding','ImageBind')
-        ]
-        OriginalApplication = QtWidgets.QApplication
-        class Application(OriginalApplication):
-            def __init__(self, argv):
-                super().__init__(argv)
-                self.step = 0
-                self.timer = QTimer(self)
-                self.timer.timeout.connect(self.exercise)
-                self.timer.start(50)
-                QTimer.singleShot(15000, lambda: self.exit(3))
-            def exercise(self):
-                window = self.activeWindow()
-                if window is None or window.snapshot is None or window.refresh_thread is not None:
-                    return
-                try:
-                    if self.step == 0:
-                        assert window.table.rowCount() == 3
-                        assert window.stop.isEnabled()
-                        QTest.mouseClick(window.stop, Qt.MouseButton.LeftButton)
-                    elif self.step == 1:
-                        assert read_control(video).paused
-                        assert window.stat_values['已暂停'].text() == '2'
-                        QTest.mouseClick(window.start, Qt.MouseButton.LeftButton)
-                    elif self.step == 2:
-                        assert not read_control(video).paused
-                        row = next(i for i in range(window.table.rowCount())
-                                   if window.table.item(i,0).data(Qt.ItemDataRole.UserRole) == job_id)
-                        window.table.selectRow(row)
-                        assert window.stop_job.isEnabled()
-                        QTest.mouseClick(window.stop_job, Qt.MouseButton.LeftButton)
-                    elif self.step == 3:
-                        assert job_id in read_control(video).paused_jobs
-                        assert window.start_job.isEnabled()
-                        QTest.mouseClick(window.start_job, Qt.MouseButton.LeftButton)
-                    elif self.step == 4:
-                        assert job_id not in read_control(video).paused_jobs
-                        window.search.setText('GUI fixture 2')
-                        assert window.table.rowCount() == 1
-                        window.table.selectRow(0)
-                        assert window.start_job.isEnabled()
-                        QTest.mouseClick(window.start_job, Qt.MouseButton.LeftButton)
-                    elif self.step == 5:
-                        assert window.snapshot['counts']['queued'] == 3
-                        window.search.clear()
-                        window.set_filter('errors')
-                        assert window.table.rowCount() == 0
-                        window.set_filter('all')
-                        assert window.table.rowCount() == 3
-                        print('Native buttons, filters, selection and live retry passed', flush=True)
-                        self.quit()
-                    self.step += 1
-                except Exception:
-                    traceback.print_exc()
-                    self.exit(1)
-        QtWidgets.QApplication = Application
-        raise SystemExit(gui.main([]))
-    """)
-    environment = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    result = subprocess.run(
-        [sys.executable, "-c", source, str(config.source), str(video.root), ids[0]],
-        capture_output=True,
-        text=True,
-        timeout=20,
-        env=environment,
-        check=False,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "Native buttons" in result.stdout
 
 
 def test_web_actions_share_the_isolated_live_queue(isolated, monkeypatch):

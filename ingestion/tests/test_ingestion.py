@@ -781,49 +781,15 @@ def test_xiaohongshu_markdown_embeds_local_cover_and_clickable_source() -> None:
     ) in text
 
 
-def test_xiaohongshu_cover_is_normalized_to_jpeg(
-    tmp_path: Path,
-    monkeypatch,
-) -> None:
-    class Headers:
-        @staticmethod
-        def get(name):
-            return "image/webp" if name == "Content-Type" else None
+def test_legacy_xiaohongshu_cover_requires_managed_service(tmp_path, monkeypatch):
+    from backend.ingestion.media import download_xiaohongshu_cover
 
-    class Response:
-        headers = Headers()
+    def forbidden(*_args, **_kwargs):
+        pytest.fail("Legacy cover downloads must not bypass the session service")
 
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_args):
-            return None
-
-        @staticmethod
-        def read(_maximum):
-            return b"webp-image"
-
-    def fake_run(command, **_kwargs):
-        Path(command[-1]).write_bytes(b"jpeg-image")
-        return type("Result", (), {"returncode": 0})()
-
-    monkeypatch.setattr(
-        "backend.ingestion.media.urllib.request.urlopen",
-        lambda *_args, **_kwargs: Response(),
-    )
-    monkeypatch.setattr(
-        "backend.ingestion.media.subprocess.run",
-        fake_run,
-    )
-
-    cover = asyncio.run(download_xiaohongshu_cover(
-        "https://sns-webpic-qc.xhscdn.com/cover.webp?sign=temporary",
-        tmp_path,
-    ))
-
-    assert cover == tmp_path / "cover.jpg"
-    assert cover.read_bytes() == b"jpeg-image"
-    assert not (tmp_path / "cover-source").exists()
+    monkeypatch.setattr("urllib.request.urlopen", forbidden)
+    with pytest.raises(ValueError, match="XHS_SESSION_SERVICE_REQUIRED"):
+        asyncio.run(download_xiaohongshu_cover("https://sns-img.xhscdn.com/cover.jpg", tmp_path))
 
 
 @pytest.mark.parametrize(

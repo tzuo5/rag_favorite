@@ -1,0 +1,22 @@
+{
+  "result": "active",
+  "ccr_concurrency": 6,
+  "llm_consumers": 6,
+  "worker_pid": 2089947,
+  "queue_paused": false,
+  "related_regression_tests_passed": 97,
+  "additional_frontier_test_passed": 1,
+  "synthetic_live_requests": 6,
+  "synthetic_live_correct": 6,
+  "synthetic_peak_admitted_slots": 6,
+  "observation": {
+    "configured_ccr_concurrency": 6,
+    "max_llm_consumer_locks": 6,
+    "max_ccr_request_slots": 5,
+    "max_active_ccr_calls": 5
+  },
+  "real_source_benchmark_performed": false,
+  "model": "gpt-6-luna",
+  "reasoning_effort": "medium",
+  "production_speed_multiplier_measured": null
+}

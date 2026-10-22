@@ -18,6 +18,56 @@ NAMES = (
     "rag-favorite-video-worker.service",
     "rag-favorite-summary-worker.service",
 )
+MEMORY_DROP_IN = Path("rag-favorite-video-worker.service.d/50-memory.conf")
+MEMORY_GUARD = """# Managed by rag_favorite/examples/install_video_services.py
+[Unit]
+StartLimitIntervalSec=10min
+StartLimitBurst=3
+
+[Service]
+MemoryAccounting=yes
+MemoryHigh=6G
+MemoryMax=8G
+MemorySwapMax=1G
+OOMPolicy=kill
+KillMode=control-group
+Restart=on-failure
+RestartSec=20s
+"""
+
+
+def install_memory_guard():
+    # daemon-reload can apply limits to an already running cgroup. An oversized
+    # old worker must be drained and stopped before installing the hard limit.
+    current = subprocess.run(
+        ["systemctl", "--user", "show", NAMES[2], "-p", "MemoryCurrent", "--value"],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+    if current.isdigit() and int(current) >= 8 * 1024**3:
+        raise RuntimeError(
+            "Drain and stop the video worker before installing its 8G limit."
+        )
+    target, backup = UNITS / MEMORY_DROP_IN, BACKUP / MEMORY_DROP_IN
+    if (
+        target.exists()
+        and not target.read_text().startswith("# Managed by rag_favorite/")
+        and not backup.exists()
+    ):
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(target, backup)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(MEMORY_GUARD)
+
+
+def uninstall_memory_guard():
+    target, backup = UNITS / MEMORY_DROP_IN, BACKUP / MEMORY_DROP_IN
+    if target.exists() and target.read_text().startswith("# Managed by rag_favorite/"):
+        if backup.exists():
+            shutil.copyfile(backup, target)
+        else:
+            target.unlink()
 
 
 def quote(value):
@@ -27,7 +77,15 @@ def quote(value):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--uninstall", action="store_true")
+    parser.add_argument("--memory-guard-only", action="store_true")
     args = parser.parse_args()
+    if args.memory_guard_only:
+        if args.uninstall:
+            parser.error("--memory-guard-only cannot be combined with --uninstall")
+        install_memory_guard()
+        subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
+        print("Video worker memory guard installed; service start state unchanged.")
+        return
     if args.uninstall:
         managed = [
             name
@@ -46,11 +104,14 @@ def main():
                 shutil.copyfile(BACKUP / name, target)
             else:
                 target.unlink()
+        if NAMES[2] in managed:
+            uninstall_memory_guard()
         subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
         print(
             "Managed user services removed; runtime data, models and credentials preserved."
         )
         return
+    install_memory_guard()
     UNITS.mkdir(parents=True, exist_ok=True)
     BACKUP.mkdir(parents=True, exist_ok=True)
     text_profile = os.environ.get(

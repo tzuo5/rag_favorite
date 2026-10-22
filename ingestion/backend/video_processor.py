@@ -113,6 +113,8 @@ class VideoProcessor:
             (subtitle_markdown, video_title, language_code)
             subtitle_markdown 为 None 表示无可用字幕。
         """
+        from backend.ingestion.xhs_transport import require_managed_xhs
+        require_managed_xhs(url or "")
         import asyncio
 
         output_dir.mkdir(exist_ok=True)
@@ -272,6 +274,8 @@ class VideoProcessor:
         prefetched_title: 若调用方已通过 fetch_subtitles 探测过视频信息，
         可直接传入视频标题，跳过重复的 extract_info 网络请求。
         """
+        from backend.ingestion.xhs_transport import require_managed_xhs
+        require_managed_xhs(url or "")
         try:
             # 创建输出目录
             output_dir.mkdir(exist_ok=True)
@@ -376,6 +380,8 @@ class VideoProcessor:
         Returns:
             视频信息字典
         """
+        from backend.ingestion.xhs_transport import require_managed_xhs
+        require_managed_xhs(url or "")
         try:
             with yt_dlp.YoutubeDL({
                 'quiet': True,

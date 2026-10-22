@@ -24,6 +24,7 @@ def fetch_with_refresh(config, video, job, *, fetcher=None, client=None):
         if str(exc) not in {
             "XHS_LOGIN_EXPIRED_OR_NOTE_UNAVAILABLE",
             "XHS_SOURCE_UNAVAILABLE",
+            "XHS_NOTE_UNAVAILABLE",
         } or not payload.get("source_author_id"):
             raise
     client = client or FollowingClient(video)

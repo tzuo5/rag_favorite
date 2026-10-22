@@ -290,6 +290,47 @@ def test_live_summary_claim_respects_pause_and_library_scope(isolated):
         )
 
 
+def test_accepted_legacy_knowledge_never_reenters_media_summary_backfill(isolated):
+    config, video, ids, _ = isolated
+    with connect_database(config) as db:
+        db.execute(
+            "UPDATE public.rag_video_jobs SET stage='legacy_knowledge_imported' WHERE id=%s",
+            (ids[0],),
+        )
+    assert enqueue_summaries(config, video) == 7
+    with connect_database(config) as db:
+        db.execute(
+            "INSERT INTO public.rag_summary_jobs(job_id,library_id,state) VALUES(%s,%s,'queued')",
+            (ids[0], library_id(video)),
+        )
+    assert claim_summary(config, video) in ids[1:8]
+    with connect_database(config) as db:
+        db.execute(
+            "UPDATE public.rag_summary_jobs SET state='failed' WHERE job_id=%s",
+            (ids[0],),
+        )
+    enqueue_summaries(config, video, retry_failed=True)
+    with connect_database(config) as db:
+        assert (
+            db.execute(
+                "SELECT state FROM public.rag_summary_jobs WHERE job_id=%s", (ids[0],)
+            ).fetchone()[0]
+            == "failed"
+        )
+        db.execute(
+            "UPDATE public.rag_summary_jobs SET state='running' WHERE job_id=%s",
+            (ids[0],),
+        )
+    assert recover_summary_claims(config, video) == 1
+    with connect_database(config) as db:
+        assert (
+            db.execute(
+                "SELECT state FROM public.rag_summary_jobs WHERE job_id=%s", (ids[0],)
+            ).fetchone()[0]
+            == "running"
+        )
+
+
 def test_live_recovery_preserves_active_summarization_and_recovers_an_abandoned_claim(
     isolated,
 ):

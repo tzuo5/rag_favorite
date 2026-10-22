@@ -13,6 +13,7 @@ from .xhs_favorites import normalize_page
 from .xhs_following_client import FollowingClient
 from .xhs_following_store import FollowingStore
 from .xhs_private import private_directory, private_open
+from .xhs_session_policy import WAIT_CODES
 
 GLOBAL_ERRORS = {
     "XHS_LOGIN_REQUIRED",
@@ -96,19 +97,25 @@ def sync_following(
         deadline = time.monotonic() + seconds
         scan_id = previous["scan_id"] if previous else None
         try:
+            # Backpressure is local: do not spend a platform request to discover it.
+            backlog = store.queue_count()
+            if previous and (
+                backlog >= high_water
+                or (previous["state"] == "backpressure" and backlog > low_water)
+            ):
+                return store.finish(scan_id, "backpressure")
+            if not previous and backlog >= high_water:
+                return {"state": "backpressure", "discovery_complete": False}
             client = client or FollowingClient(video)
             owner = client.owner()
             store.bind(owner)
-            snapshot = client.following(owner)
-            scan_id, mode = store.snapshot(
-                snapshot, restart=restart, refresh_heads=not continue_only
-            )
-            if (
-                previous
-                and previous["state"] == "backpressure"
-                and store.queue_count() > low_water
-            ):
-                return store.finish(scan_id, "backpressure")
+            if continue_only and previous and not restart:
+                mode = previous["mode"]
+            else:
+                snapshot = client.following(owner)
+                scan_id, mode = store.snapshot(
+                    snapshot, restart=restart, refresh_heads=not continue_only
+                )
             pages = 0
             while time.monotonic() < deadline and (not max_pages or pages < max_pages):
                 if store.paused():
@@ -204,6 +211,11 @@ def sync_following(
                     pages += 1
                 except ProviderUnavailable as exc:
                     code = error_code(exc)
+                    if code in WAIT_CODES:
+                        store.save_author(
+                            scan_id, author_id, checkpoint, "pending", code
+                        )
+                        return store.finish(scan_id, "partial", code)
                     store.save_author(scan_id, author_id, checkpoint, "blocked", code)
                     if code in GLOBAL_ERRORS:
                         return store.finish(scan_id, "blocked", code)
@@ -219,7 +231,7 @@ def sync_following(
                 else error_code(exc)
             )
             if scan_id:
-                if code == "XHS_SESSION_BUSY":
+                if code in WAIT_CODES:
                     return store.finish(scan_id, "partial", code)
                 return store.finish(scan_id, "blocked", code)
             return {

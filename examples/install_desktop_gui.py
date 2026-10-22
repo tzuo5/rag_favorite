@@ -1,12 +1,13 @@
-"""Install the native RAG queue monitor into the user's desktop and app menu."""
+"""Install the private web console shortcut into the desktop and app menu."""
 
 from __future__ import annotations
 
 import argparse
 import shutil
 import subprocess
-import sys
 from pathlib import Path
+
+from rag_favorite.desktop_launcher import console_url
 
 MARKER = "# Managed by rag_favorite/examples/install_desktop_gui.py"
 
@@ -21,18 +22,8 @@ def desktop_argument(value):
     return '"' + escaped + '"'
 
 
-def launcher_text(root, python, config, video):
-    arguments = [
-        "/usr/bin/env",
-        f"PYTHONPATH={root / 'src'}",
-        python,
-        "-m",
-        "rag_favorite.desktop_gui",
-        "--config",
-        config,
-        "--video-config",
-        video,
-    ]
+def launcher_text(root, url):
+    arguments = ["xdg-open", url]
     return "\n".join(
         [
             MARKER,
@@ -41,14 +32,13 @@ def launcher_text(root, python, config, video):
             "Version=1.0",
             "Name=RAG 任务控制台",
             "Name[zh_CN]=RAG 任务控制台",
-            "Comment=查看真实任务队列与模型工作状态，启动或暂停处理",
+            "Comment=在浏览器中打开私有 RAG 任务控制台",
             "Exec=" + " ".join(desktop_argument(arg) for arg in arguments),
             f"Path={root}",
             f"Icon={root / 'src/rag_favorite/resources/queue-monitor.svg'}",
             "Terminal=false",
             "Categories=Utility;",
-            "StartupNotify=true",
-            "StartupWMClass=rag-favorite-gui",
+            "StartupNotify=false",
             "",
         ]
     )
@@ -58,10 +48,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     root = Path(__file__).resolve().parents[1]
     parser.add_argument(
-        "--config", type=Path, default=root / ".runtime/phase1/config.toml"
-    )
-    parser.add_argument(
-        "--video-config", type=Path, default=root / ".runtime/videorag/video.toml"
+        "--settings", type=Path, default=root / ".runtime/web/settings.json"
     )
     parser.add_argument("--uninstall", action="store_true")
     args = parser.parse_args(argv)
@@ -85,11 +72,7 @@ def main(argv=None):
             path.unlink(missing_ok=True)
         print("已移除桌面与应用菜单启动器。")
         return 0
-    if not args.config.is_file() or not args.video_config.is_file():
-        raise RuntimeError("需要有效的主配置和视频配置路径。")
-    text = launcher_text(
-        root, Path(sys.executable), args.config.resolve(), args.video_config.resolve()
-    )
+    text = launcher_text(root, console_url(args.settings))
     for path in destinations:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")

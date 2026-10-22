@@ -25,6 +25,7 @@ from .config import (
     load_config,
 )
 from .model_activity import model_call
+from .observation import timed
 
 QUERY_INSTRUCTION = DEFAULT_QUERY_INSTRUCTION
 MAX_RESPONSE_BYTES = 16_000_000
@@ -141,6 +142,7 @@ class OllamaEmbeddingClient:
                 "Local model digest differs from the pinned encoder; rebuild a new generation."
             )
 
+    @timed("Embedding.http", kind="request")
     def _embed(self, texts: list[str]) -> list[tuple[float, ...]]:
         if not texts:
             return []
@@ -390,6 +392,7 @@ class LMStudioEmbeddingClient(OllamaEmbeddingClient):
             raise EmbeddingError("LM Studio context has no room for document text.")
         return limit
 
+    @timed("Embedding.http", kind="request")
     def _embed(self, texts: list[str]) -> list[tuple[float, ...]]:
         if not texts:
             return []
@@ -522,6 +525,7 @@ class OpenRouterEmbeddingClient(OllamaEmbeddingClient):
     def embed_query(self, text: str) -> tuple[float, ...]:
         return self._embed([text])[0]
 
+    @timed("Embedding.http", kind="request")
     def _embed(self, texts: list[str]) -> list[tuple[float, ...]]:
         if not texts:
             return []

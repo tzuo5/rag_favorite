@@ -33,6 +33,7 @@ def classify_platform_error(error: BaseException) -> ClassifiedPlatformError:
                 PlatformErrorCode.EXTRACTOR_SCHEMA_CHANGED:
                     "平台读取规则已变化",
                 PlatformErrorCode.DISCOVERY_FAILED: "无法读取作者作品列表",
+                PlatformErrorCode.XHS_SESSION_SERVICE_REQUIRED: "请使用 RAG 统一会话服务访问小红书。",
             }[code]
         )
         return ClassifiedPlatformError(
@@ -43,6 +44,7 @@ def classify_platform_error(error: BaseException) -> ClassifiedPlatformError:
                 PlatformErrorCode.BOT_CHECK,
                 PlatformErrorCode.PLATFORM_BLOCKED,
                 PlatformErrorCode.EXTRACTOR_SCHEMA_CHANGED,
+                PlatformErrorCode.XHS_SESSION_SERVICE_REQUIRED,
             },
             rate_limited=code in {
                 PlatformErrorCode.RATE_LIMITED,

@@ -78,6 +78,14 @@ def canonical_note_url(url):
     return urlunsplit((part.scheme, part.netloc, part.path, "", ""))
 
 
+def note_identity(url):
+    import re
+
+    part = urlsplit(url)
+    match = re.fullmatch(r"/(?:explore|discovery/item)/([a-f0-9]{24})", part.path)
+    return match[1] if part.hostname == "www.xiaohongshu.com" and match else None
+
+
 class TrustedRedirect(urllib.request.HTTPRedirectHandler):
     def __init__(self, allowed):
         self.allowed = allowed

@@ -232,7 +232,7 @@ def test_image_prepare_downloads_and_ocrs_then_llm_uses_cache(
     def download(_url, path, **_kwargs):
         stages.events.append("image-download")
         Image.new("RGB", (8, 8)).save(path)
-        return {"sha256": digest_file(path)}
+        return {"sha256": digest_file(path), "bytes": path.stat().st_size}
 
     def ocr(_path):
         stages.events.append("ocr")
@@ -249,11 +249,24 @@ def test_image_prepare_downloads_and_ocrs_then_llm_uses_cache(
             stages.events.append("image-ccr")
             return {"caption": "图片内容", "facts": []}
 
-    monkeypatch.setattr(xhs_images, "download_image", download)
+    from rag_favorite import xhs_media_service
+    from rag_favorite.xhs_session_rpc import SessionRPC
+
+    def managed_download(self, operation, **params):
+        assert operation == "download_media"
+        bundle = xhs_media_service.MediaBundle(
+            stages.video, params["note"], params["job_id"]
+        )
+        if not bundle.ready():
+            return bundle.download("http://127.0.0.1:18998", 1)
+        return bundle.data
+
+    monkeypatch.setattr(xhs_media_service, "download_image", download)
+    monkeypatch.setattr(SessionRPC, "call", managed_download)
     monkeypatch.setattr(xhs_images, "local_ocr", ocr)
     monkeypatch.setattr(xhs_images, "CCRProvider", ImageProvider)
     video_worker.process(config, stages.video, job, phase="download")
-    assert stages.events == []
+    assert stages.events == ["image-download"]
     video_worker.process(config, stages.video, job, phase="prepare")
     assert stages.events == ["image-download", "ocr"]
     stages.events.clear()

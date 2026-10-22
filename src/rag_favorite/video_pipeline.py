@@ -1,4 +1,4 @@
-"""Four bounded, durable stage consumers sharing one library coordinator."""
+"""Bounded, durable stage consumers sharing one library coordinator."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 from psycopg.errors import LockNotAvailable
@@ -23,11 +24,34 @@ from .pipeline_fence import (
     stage_owner,
 )
 from .queue_control import locked_control, read_control, set_control
-from .video_store import job_status, library_id
+from .video_store import ASSET_ID, job_status, library_id
+from .xhs_session_policy import WAIT_CODES
 
 STAGES = ("download", "prepare", "llm", "publish")
 LEASE_SECONDS = 120
 HEARTBEAT_SECONDS = 15
+XHS_AUTH_ERRORS = {"XHS_LOGIN_REQUIRED", "XHS_LOGIN_OR_VERIFICATION_REQUIRED"}
+# Both admission and claiming must skip a gated source to avoid filling the frontier.
+XHS_GATE_SQL = """NOT (
+    coalesce(j.payload->>'asset_id','') = ''
+    AND coalesce(j.payload->>'source_url','') ~ '^https://(www[.]xiaohongshu[.]com|xhslink[.]cn)/'
+    AND EXISTS (SELECT 1 FROM public.rag_video_pipeline_control g
+        WHERE g.library_id=j.library_id
+        AND (g.xhs_login_required OR g.xhs_circuit_until>now() OR
+            (g.xhs_download_blocked AND NOT (
+                g.xhs_session_state->'recovery'->>'phase'='acceptance'
+                AND coalesce(g.xhs_session_state->'network'->>'paused','true')='false'
+                AND coalesce(g.xhs_session_state->'recovery'->'allowed_jobs','[]'::jsonb) ? j.id::text
+            ))))
+)"""
+
+
+def xhs_source(job):
+    payload = job.get("payload", {})
+    return urlsplit(payload.get("source_url", "")).hostname in {
+        "www.xiaohongshu.com",
+        "xhslink.cn",
+    }
 
 
 def stage_lock(job_id, stage):
@@ -36,7 +60,7 @@ def stage_lock(job_id, stage):
 
 def temporary_bytes(config, video):
     """Count pipeline-owned task copies, including retained failed attempts."""
-    with connect_database(config) as c:
+    with connect_database(config, register_pgvector=False) as c:
         rows = c.execute(
             "SELECT DISTINCT j.id,j.payload FROM public.rag_video_jobs j "
             "JOIN public.rag_video_pipeline p ON p.job_id=j.id "
@@ -52,12 +76,18 @@ def temporary_bytes(config, video):
             paths.update(
                 p for p in work.rglob("*") if p.is_file() and not p.is_symlink()
             )
-        for key in ("asset_id", "transcript_asset_id"):
-            if payload.get(key):
-                asset = video.root / "assets" / payload[key]
-                if asset.is_symlink():
-                    raise ConfigError("Unsafe pipeline asset")
-                paths.add(asset)
+        asset_ids = [
+            payload.get("asset_id"),
+            payload.get("transcript_asset_id"),
+            *payload.get("superseded_asset_ids", []),
+        ]
+        for asset_id in filter(None, asset_ids):
+            if not isinstance(asset_id, str) or not ASSET_ID.fullmatch(asset_id):
+                raise ConfigError("Unsafe pipeline asset ID")
+            asset = video.root / "assets" / asset_id
+            if asset.is_symlink():
+                raise ConfigError("Unsafe pipeline asset")
+            paths.add(asset)
     total = 0
     for path in paths:
         try:
@@ -74,7 +104,7 @@ def initialize_jobs(config, video, allowed_ids=None):
     with locked_control(video) as control:
         if control.paused:
             return 0
-        with connect_database(config) as c:
+        with connect_database(config, register_pgvector=False) as c:
             regenerate = c.execute(
                 "DELETE FROM public.rag_video_pipeline p USING public.rag_video_jobs j "
                 "WHERE j.id=p.job_id AND p.library_id=%s AND j.state='queued' AND p.status='blocked' "
@@ -111,11 +141,16 @@ def initialize_jobs(config, video, allowed_ids=None):
                 (library_id(video),),
             )
             count = c.execute(
-                "SELECT count(DISTINCT job_id) FROM public.rag_video_pipeline "
-                "WHERE library_id=%s AND status IN ('queued','running')",
-                (library_id(video),),
+                "SELECT count(DISTINCT p.job_id) FROM public.rag_video_pipeline p "
+                "JOIN public.rag_video_jobs j ON j.id=p.job_id "
+                "WHERE p.library_id=%s AND p.status IN ('queued','running') "
+                "AND (p.status='running' OR ("
+                "j.state NOT IN ('failed','blocked','complete','duplicate') "
+                "AND NOT (p.job_id=ANY(%s::uuid[])) "
+                "AND (p.stage<>'download' OR " + XHS_GATE_SQL + ")))",
+                (library_id(video), list(control.paused_jobs)),
             ).fetchone()[0]
-            room = max(0, video.pipeline_prefetch + 3 - count)
+            room = max(0, video.pipeline_prefetch + video.ccr_concurrency + 2 - count)
             if not room or temporary_bytes(config, video) >= video.pipeline_temp_bytes:
                 return 0
             rows = c.execute(
@@ -124,6 +159,7 @@ def initialize_jobs(config, video, allowed_ids=None):
                 "AND NOT (j.id=ANY(%s::uuid[])) "
                 "AND (%s::uuid[] IS NULL OR j.id=ANY(%s::uuid[])) "
                 "AND NOT EXISTS (SELECT 1 FROM public.rag_video_pipeline p WHERE p.job_id=j.id) "
+                "AND " + XHS_GATE_SQL + " "
                 "ORDER BY j.priority DESC,j.created_at LIMIT %s FOR UPDATE SKIP LOCKED",
                 (
                     library_id(video),
@@ -143,7 +179,7 @@ def initialize_jobs(config, video, allowed_ids=None):
 
 
 def recover_leases(config, video):
-    with connect_database(config) as c:
+    with connect_database(config, register_pgvector=False) as c:
         # Completion/duplicate publication may commit just before a process dies.
         c.execute(
             "UPDATE public.rag_video_pipeline p SET status='done',owner=NULL,lease_until=NULL,"
@@ -166,7 +202,7 @@ def claim_stage(config, video, stage, owner, guard, allowed_ids=None):
     with locked_control(video) as control:
         if control.paused:
             return None
-        with connect_database(config) as c:
+        with connect_database(config, register_pgvector=False) as c:
             if stage == "llm":
                 circuit = c.execute(
                     "SELECT circuit_until>now() FROM public.rag_video_pipeline_control WHERE library_id=%s",
@@ -189,6 +225,7 @@ def claim_stage(config, video, stage, owner, guard, allowed_ids=None):
                 "AND j.state NOT IN ('failed','blocked','complete','duplicate') "
                 "AND NOT (p.job_id=ANY(%s::uuid[])) "
                 "AND (%s::uuid[] IS NULL OR p.job_id=ANY(%s::uuid[])) "
+                "AND (%s<>'download' OR " + XHS_GATE_SQL + ") "
                 "ORDER BY j.priority DESC,j.created_at LIMIT 1 FOR UPDATE OF p SKIP LOCKED",
                 (
                     library_id(video),
@@ -196,6 +233,7 @@ def claim_stage(config, video, stage, owner, guard, allowed_ids=None):
                     list(control.paused_jobs),
                     allowed_ids,
                     allowed_ids,
+                    stage,
                 ),
             ).fetchone()
             if not row:
@@ -243,7 +281,7 @@ class Lease:
         if self.lost.is_set():
             raise OwnershipLost()
         if connection is None:
-            with connect_database(self.config) as c:
+            with connect_database(self.config, register_pgvector=False) as c:
                 self.assert_live(c)
             return
         row = connection.execute(
@@ -274,7 +312,7 @@ class Lease:
     def heartbeat(self):
         while not self.finished.wait(HEARTBEAT_SECONDS):
             try:
-                with connect_database(self.config) as c:
+                with connect_database(self.config, register_pgvector=False) as c:
                     changed = c.execute(
                         "UPDATE public.rag_video_pipeline SET lease_until=now()+(%s*interval '1 second'),updated_at=now() "
                         "WHERE job_id=%s AND stage=%s AND owner=%s AND token=%s AND status='running' AND lease_until>now()",
@@ -301,7 +339,7 @@ class Lease:
     def request_succeeded(self):
         if self.stage != "llm":
             return
-        with connect_database(self.config) as c:
+        with connect_database(self.config, register_pgvector=False) as c:
             self.assert_live(c)
             c.execute(
                 "INSERT INTO public.rag_video_pipeline_control(library_id) VALUES(%s) "
@@ -311,7 +349,7 @@ class Lease:
 
 
 def finish_stage(config, video, job, stage, owner, elapsed):
-    with connect_database(config) as c:
+    with connect_database(config, register_pgvector=False) as c:
         updated = c.execute(
             "UPDATE public.rag_video_pipeline SET status='done',owner=NULL,lease_until=NULL,"
             "completed_at=now(),elapsed_seconds=elapsed_seconds+%s,updated_at=now(),artifact_ref=%s "
@@ -339,6 +377,15 @@ def finish_stage(config, video, job, stage, owner, elapsed):
                 "ON CONFLICT(library_id) DO UPDATE SET consecutive_failures=0,circuit_until=NULL,updated_at=now()",
                 (library_id(video),),
             )
+        # The session service owns the source gate. A completed older download
+        # must not clear a newer verification or cooldown event.
+        if stage == "download" and xhs_source(job):
+            c.execute(
+                "UPDATE public.rag_video_pipeline_control SET xhs_failures=0,"
+                "xhs_circuit_until=NULL,updated_at=now() "
+                "WHERE library_id=%s AND xhs_session_version=0",
+                (library_id(video),),
+            )
 
 
 def fail_stage(config, video, job, stage, owner, exc, elapsed):
@@ -350,13 +397,18 @@ def fail_stage(config, video, job, stage, owner, exc, elapsed):
     )
     code = getattr(exc, "code", None) or symbolic or type(exc).__name__
     paused = isinstance(exc, PipelinePaused)
+    deferred = xhs_source(job) and code in WAIT_CODES
     transient = bool(getattr(exc, "retryable", False)) or code in {
         "XHS_SESSION_BUSY",
         "SUMMARY_BUSY",
     }
-    retry = paused or (transient and job["attempts"] <= 2)
+    retry = paused or deferred or (transient and job["attempts"] <= 2)
     delay = 0 if paused else (5 if job["attempts"] == 1 else 30)
-    with connect_database(config) as c:
+    if deferred:
+        delay = max(
+            5, min(86400, int(getattr(exc, "diagnostics", {}).get("retry_after", 30)))
+        )
+    with connect_database(config, register_pgvector=False) as c:
         changed = c.execute(
             "UPDATE public.rag_video_pipeline SET status=%s,owner=NULL,lease_until=NULL,error_code=%s,"
             "attempts=attempts-%s,retry_at=now()+(%s*interval '1 second'),"
@@ -365,7 +417,7 @@ def fail_stage(config, video, job, stage, owner, exc, elapsed):
             (
                 "queued" if retry else "blocked",
                 code,
-                1 if paused else 0,
+                1 if paused or deferred else 0,
                 delay,
                 elapsed,
                 job["id"],
@@ -378,18 +430,37 @@ def fail_stage(config, video, job, stage, owner, exc, elapsed):
             raise OwnershipLost()
         c.execute(
             "UPDATE public.rag_video_jobs SET state=CASE WHEN state='published' AND %s THEN state ELSE %s END,"
-            "stage=%s,error_code=%s,updated_at=now() WHERE id=%s",
+            "stage=%s,error_code=%s,attempts=greatest(0,attempts-%s),updated_at=now() WHERE id=%s",
             (
                 retry,
                 "running" if retry else "blocked",
                 f"{stage}:retry_wait" if retry else f"failed:{stage}",
                 code,
+                1 if deferred and stage == "download" else 0,
                 job["id"],
             ),
         )
         link_failure = bool(getattr(exc, "retryable", False)) or getattr(
             exc, "status_code", None
         ) in {401, 403, 507}
+        if stage == "download" and xhs_source(job) and not deferred:
+            if code in XHS_AUTH_ERRORS:
+                c.execute(
+                    "INSERT INTO public.rag_video_pipeline_control(library_id,xhs_login_required) "
+                    "VALUES(%s,true) ON CONFLICT(library_id) DO UPDATE SET "
+                    "xhs_login_required=true,updated_at=now()",
+                    (library_id(video),),
+                )
+            elif transient and not paused:
+                c.execute(
+                    "INSERT INTO public.rag_video_pipeline_control(library_id,xhs_failures) "
+                    "VALUES(%s,1) ON CONFLICT(library_id) DO UPDATE SET "
+                    "xhs_failures=rag_video_pipeline_control.xhs_failures+1,"
+                    "xhs_circuit_until=CASE WHEN rag_video_pipeline_control.xhs_failures+1>=3 "
+                    "THEN now()+interval '60 seconds' ELSE rag_video_pipeline_control.xhs_circuit_until END,"
+                    "updated_at=now()",
+                    (library_id(video),),
+                )
         if stage == "llm" and link_failure and not paused:
             c.execute(
                 "INSERT INTO public.rag_video_pipeline_control(library_id,consecutive_failures) VALUES(%s,1) "
@@ -405,6 +476,14 @@ def fail_stage(config, video, job, stage, owner, exc, elapsed):
                 "pipeline_stage": stage,
                 "error_code": code,
                 "retry": retry,
+                "platform_code": (
+                    getattr(exc, "diagnostics", {}).get("platform_code")
+                    if re.fullmatch(
+                        r"[0-9-]{1,12}",
+                        str(getattr(exc, "diagnostics", {}).get("platform_code", "")),
+                    )
+                    else None
+                ),
             }
         ),
         flush=True,
@@ -412,7 +491,7 @@ def fail_stage(config, video, job, stage, owner, exc, elapsed):
 
 
 def pipeline_snapshot(config, video):
-    with connect_database(config) as c:
+    with connect_database(config, register_pgvector=False) as c:
         if not c.execute("SELECT to_regclass('public.rag_video_pipeline')").fetchone()[
             0
         ]:
@@ -424,6 +503,10 @@ def pipeline_snapshot(config, video):
         ).fetchall()
         circuit = c.execute(
             "SELECT circuit_until FROM public.rag_video_pipeline_control WHERE library_id=%s",
+            (library_id(video),),
+        ).fetchone()
+        xhs_gate = c.execute(
+            "SELECT xhs_login_required,xhs_circuit_until,xhs_download_blocked,xhs_session_state FROM public.rag_video_pipeline_control WHERE library_id=%s",
             (library_id(video),),
         ).fetchone()
     now = datetime.now(UTC)
@@ -460,6 +543,12 @@ def pipeline_snapshot(config, video):
         "running": running,
         "jobs": jobs,
         "circuit_until": circuit[0].isoformat() if circuit and circuit[0] else None,
+        "xhs_login_required": bool(xhs_gate and xhs_gate[0]),
+        "xhs_download_blocked": bool(xhs_gate and xhs_gate[2]),
+        "xhs_session_state": xhs_gate[3] if xhs_gate else {},
+        "xhs_circuit_until": xhs_gate[1].isoformat()
+        if xhs_gate and xhs_gate[1]
+        else None,
     }
 
 
@@ -479,7 +568,7 @@ def run_pipeline(config, video, *, max_jobs=None):
             ("video-worker:" + library_id(video),),
         ).fetchone()[0]:
             raise RuntimeError("A video worker is already running for this library.")
-        with connect_database(config) as c:
+        with connect_database(config, register_pgvector=False) as c:
             if not c.execute(
                 "SELECT to_regclass('public.rag_video_pipeline')"
             ).fetchone()[0]:
@@ -493,11 +582,13 @@ def run_pipeline(config, video, *, max_jobs=None):
                 "queue_control_version": 1,
                 "title_dedup_version": 1,
                 "pipeline_version": 1,
+                "ccr_concurrency": video.ccr_concurrency,
+                "llm_consumers": video.ccr_concurrency,
             },
         )
         allowed_ids = None
         if max_jobs is not None:
-            with connect_database(config) as c:
+            with connect_database(config, register_pgvector=False) as c:
                 allowed_ids = [
                     str(r[0])
                     for r in c.execute(
@@ -524,14 +615,17 @@ def run_pipeline(config, video, *, max_jobs=None):
                 },
             )
 
-        def consume(stage):
+        def consume(stage, slot=0):
             owner = f"{os.getpid()}:{stage}:{uuid4().hex}"
             while not stopping.is_set():
                 with connect_database(config, register_pgvector=False) as guard:
                     guard.autocommit = True
+                    consumer_key = f"video-consumer:{library_id(video)}:{stage}"
+                    if slot:
+                        consumer_key += f":{slot}"
                     if not guard.execute(
                         "SELECT pg_try_advisory_lock(hashtext(%s))",
-                        (f"video-consumer:{library_id(video)}:{stage}",),
+                        (consumer_key,),
                     ).fetchone()[0]:
                         stopping.wait(0.5)
                         continue
@@ -544,7 +638,18 @@ def run_pipeline(config, video, *, max_jobs=None):
                     heartbeat.start()
                     started = time.monotonic()
                     try:
-                        with stage_owner(lease), job_activity(video, job["id"]):
+                        from .observation import span
+
+                        with (
+                            stage_owner(lease),
+                            job_activity(video, job["id"]),
+                            span(
+                                "stage",
+                                stage,
+                                token=job["token"],
+                                attempt=job["attempts"],
+                            ),
+                        ):
                             lease.before_operation()
                             process(config, video, job, phase=stage)
                             lease.assert_live()
@@ -586,10 +691,13 @@ def run_pipeline(config, video, *, max_jobs=None):
                             (stage_lock(job["id"], stage),),
                         )
 
+        consumers = [(stage, 0) for stage in STAGES if stage != "llm"] + [
+            ("llm", slot) for slot in range(video.ccr_concurrency)
+        ]
         with ThreadPoolExecutor(
-            max_workers=4, thread_name_prefix="video-stage"
+            max_workers=len(consumers), thread_name_prefix="video-stage"
         ) as pool:
-            futures = [pool.submit(consume, stage) for stage in STAGES]
+            futures = [pool.submit(consume, stage, slot) for stage, slot in consumers]
             try:
                 retention_checked = time.monotonic()
                 while True:
@@ -611,7 +719,7 @@ def run_pipeline(config, video, *, max_jobs=None):
                         )
                         retention_checked = time.monotonic()
                     if allowed_ids is not None:
-                        with connect_database(config) as c:
+                        with connect_database(config, register_pgvector=False) as c:
                             pending = c.execute(
                                 "SELECT count(*) FROM public.rag_video_jobs j WHERE id=ANY(%s::uuid[]) "
                                 "AND state NOT IN ('complete','duplicate','blocked','failed') "
