@@ -31,7 +31,7 @@ dependencies = [
 
 [project.optional-dependencies]
 web = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
-mcp = ["mcp>=1.26,<2", "pydantic>=2.7,<3"]
+mcp = ["mcp>=1.26,<3", "pydantic>=2.7,<3"]
 video-sources = ["playwright>=1.51,<2", "yt-dlp[default]>=2024.12.13", "xhshow>=0.1.9,<0.3"]
 image-notes = ["rapidocr-onnxruntime>=1.4,<2", "Pillow>=10,<13"]
 ingestion = [
@@ -47,7 +47,7 @@ dev = [
   "openai>=1.51,<3",
   "pytest>=8,<10",
   "ruff>=0.12,<1",
-  "twine>=6,<7",
+  "twine>=6,<8",
   "xhshow>=0.1.9,<0.3",
   "yt-dlp[default]>=2024.12.13",
 ]
